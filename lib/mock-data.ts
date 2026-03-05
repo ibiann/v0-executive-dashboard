@@ -542,14 +542,25 @@ export interface LogWorkEntry {
   progressPercent: number;
 }
 
+export interface EngineerProjectMembership {
+  projectId: string;
+  projectName: string;
+  roleInProject: string;
+  ragStatus: RAGStatus;
+  overallProgress: number;
+  plannedProgress: number;
+  phase: Phase;          // current active phase
+}
+
 export interface EngineerProfile {
   memberId: string;
   name: string;
   initials: string;
   role: string;
   department: string;
-  projectId: string;
+  projectId: string;       // primary project
   projectName: string;
+  projects: EngineerProjectMembership[];  // all project memberships
   notifications: EngNotification[];
   logWorkHistory: LogWorkEntry[];
 }
@@ -563,6 +574,26 @@ export const ENGINEER_PROFILE: EngineerProfile = {
   department: "FPGA",
   projectId: "PRJ-001",
   projectName: "NavComm FPGA Core",
+  projects: [
+    {
+      projectId: "PRJ-001",
+      projectName: "NavComm FPGA Core",
+      roleInProject: "FPGA Engineer",
+      ragStatus: "amber",
+      overallProgress: 62,
+      plannedProgress: 74,
+      phase: "R&D",
+    },
+    {
+      projectId: "PRJ-005",
+      projectName: "TerraEdge IoT Platform",
+      roleInProject: "FPGA Reviewer",
+      ragStatus: "amber",
+      overallProgress: 55,
+      plannedProgress: 70,
+      phase: "Test",
+    },
+  ],
   notifications: [
     {
       id: "N-001",

@@ -6,25 +6,29 @@ import {
   Play, Pause, CheckCircle, AlertTriangle, Clock,
   ChevronRight, X, CalendarDays, Timer, FileEdit,
   SlidersHorizontal, LogOut, Plus, Check, Lock,
+  Briefcase, ArrowLeft, Filter,
 } from "lucide-react";
 import {
   TACTICAL_DATA,
   ENGINEER_PROFILE,
   EngineerProfile,
+  EngineerProjectMembership,
   EngNotification,
   LogWorkEntry,
   TaskCard,
+  RAGStatus,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type RunState = "idle" | "running" | "paused";
+type RunState      = "idle" | "running" | "paused";
+type ActiveSection = "home" | "projects" | "tasks" | "timesheets" | "documents";
 
-interface TaskRunState   { [taskId: string]: RunState }
-interface TaskProgress   { [taskId: string]: number }
-interface TaskElapsed    { [taskId: string]: number }   // seconds accumulated
-interface TaskActualHours { [taskId: string]: number }  // total logged hours per task
+interface TaskRunState    { [taskId: string]: RunState }
+interface TaskProgress    { [taskId: string]: number }
+interface TaskElapsed     { [taskId: string]: number }
+interface TaskActualHours { [taskId: string]: number }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -144,15 +148,15 @@ function LogWorkModal({
 }: {
   task: TaskCard;
   currentProgress: number;
-  prefillHours?: number;  // from timer
-  isFinalLog?: boolean;   // Finish & Review flow
+  prefillHours?: number;
+  isFinalLog?: boolean;
   onSave: (entry: Omit<LogWorkEntry, "id">) => void;
   onClose: () => void;
 }) {
-  const [date, setDate] = useState(TODAY);
-  const [hours, setHours] = useState<number | "">(prefillHours ?? "");
+  const [date, setDate]               = useState(TODAY);
+  const [hours, setHours]             = useState<number | "">(prefillHours ?? "");
   const [description, setDescription] = useState("");
-  const [progress, setProgress] = useState(isFinalLog ? 100 : currentProgress);
+  const [progress, setProgress]       = useState(isFinalLog ? 100 : currentProgress);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -172,7 +176,6 @@ function LogWorkModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className={cn("p-1.5 rounded-md", isFinalLog ? "bg-green-100" : "bg-primary/10")}>
@@ -200,49 +203,35 @@ function LogWorkModal({
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-          {/* Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
               Date
             </label>
             <input
-              type="date"
-              value={date}
-              max={TODAY}
-              onChange={(e) => setDate(e.target.value)}
-              required
+              type="date" value={date} max={TODAY}
+              onChange={(e) => setDate(e.target.value)} required
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          {/* Hours */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Timer className="w-3.5 h-3.5 text-muted-foreground" />
               Hours Logged
               {prefillHours !== undefined && (
-                <span className="ml-auto text-[10px] text-primary font-normal">
-                  (auto-filled from timer)
-                </span>
+                <span className="ml-auto text-[10px] text-primary font-normal">(auto-filled from timer)</span>
               )}
             </label>
             <input
-              type="number"
-              min={0.5}
-              max={24}
-              step={0.5}
-              value={hours}
+              type="number" min={0.5} max={24} step={0.5} value={hours}
               onChange={(e) => setHours(e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="e.g. 4.5"
-              required
+              placeholder="e.g. 4.5" required
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          {/* Work Content / Technical Description */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-muted-foreground" />
@@ -252,18 +241,14 @@ function LogWorkModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={
-                isFinalLog
-                  ? "Describe what was achieved, test results, known issues, and sign-off notes..."
-                  : "Describe the work completed, issues encountered, next steps..."
-              }
-              rows={4}
-              required
+              placeholder={isFinalLog
+                ? "Describe what was achieved, test results, known issues, and sign-off notes..."
+                : "Describe the work completed, issues encountered, next steps..."}
+              rows={4} required
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
-          {/* Progress Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -273,30 +258,21 @@ function LogWorkModal({
               <span className="text-sm font-bold text-primary">{progress}%</span>
             </div>
             <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={progress}
+              type="range" min={0} max={100} step={5} value={progress}
               disabled={isFinalLog}
               onChange={(e) => setProgress(Number(e.target.value))}
               className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{
-                background: `linear-gradient(to right, var(--primary) ${progress}%, var(--secondary) ${progress}%)`,
-              }}
+              style={{ background: `linear-gradient(to right, var(--primary) ${progress}%, var(--secondary) ${progress}%)` }}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground">
               <span>0%</span><span>25%</span><span>50%</span><span>75%</span>
               <span className={cn(isFinalLog && "text-green-600 font-semibold")}>100%</span>
             </div>
             {isFinalLog && (
-              <p className="text-[10px] text-green-600 font-medium">
-                Progress locked to 100% for final completion.
-              </p>
+              <p className="text-[10px] text-green-600 font-medium">Progress locked to 100% for final completion.</p>
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2 pt-1">
             <button
               type="submit"
@@ -312,8 +288,7 @@ function LogWorkModal({
             </button>
             {!isFinalLog && (
               <button
-                type="button"
-                onClick={onClose}
+                type="button" onClick={onClose}
                 className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
               >
                 Cancel
@@ -336,7 +311,7 @@ function TimerDisplay({ elapsed }: { elapsed: number }) {
   );
 }
 
-// ─── Task Card ────────────────────────────────────────────────────────────────
+// ─── Priority / Phase colour maps ─────────────────────────────────────────────
 
 const PRIORITY_COLOR = {
   high:   "text-red-600 bg-red-50 border-red-200",
@@ -350,6 +325,14 @@ const PHASE_COLOR: Record<string, string> = {
   Test:    "bg-teal-100 text-teal-700",
   Release: "bg-orange-100 text-orange-700",
 };
+
+const RAG_DOT: Record<RAGStatus, string> = {
+  green: "bg-green-500",
+  amber: "bg-amber-400",
+  red:   "bg-red-500",
+};
+
+// ─── Task Card ────────────────────────────────────────────────────────────────
 
 function MyTaskCard({
   task,
@@ -374,7 +357,7 @@ function MyTaskCard({
   onFinishReview: () => void;
   onLogWork: () => void;
 }) {
-  const isLocked = task.status === "Waiting for Review" || task.status === "Done";
+  const isLocked  = task.status === "Waiting for Review" || task.status === "Done";
   const isWaiting = task.status === "Waiting for Review";
 
   return (
@@ -414,7 +397,7 @@ function MyTaskCard({
         )}
       </div>
 
-      {/* Planned / Actual hours row */}
+      {/* Planned / Actual hours */}
       <div className="flex items-center gap-4 text-xs">
         <span className="text-muted-foreground">
           Planned: <span className="font-semibold text-foreground">{task.plannedHours ?? "—"}h</span>
@@ -440,14 +423,11 @@ function MyTaskCard({
           <span className="text-[11px] font-bold text-primary">{progress}%</span>
         </div>
         <div className="h-2 bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      {/* Waiting for review status chip */}
+      {/* Waiting chip */}
       {isWaiting && (
         <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
           <Clock className="w-3.5 h-3.5 shrink-0" />
@@ -455,56 +435,55 @@ function MyTaskCard({
         </div>
       )}
 
-      {/* Action buttons — hidden when locked */}
+      {/* Action buttons */}
       {!isLocked && (
         <div className="flex flex-col gap-2">
-          {/* Planned-hours gate: block Start if PM hasn't set planned hours */}
           {!task.plannedHours && runState !== "running" && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span>PM chua dat <strong>Thoi gian du kien</strong>. Khong the bat dau nhiem vu nay.</span>
             </div>
           )}
-        <div className="flex items-center gap-2 flex-wrap">
-          {runState !== "running" ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            {runState !== "running" ? (
+              <button
+                onClick={onStart}
+                disabled={!task.plannedHours}
+                title={!task.plannedHours ? "Planned Hours not set — PM must configure this task first." : undefined}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors",
+                  task.plannedHours
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+                )}
+              >
+                <Play className="w-3.5 h-3.5" />
+                Bat dau
+              </button>
+            ) : (
+              <button
+                onClick={onPause}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 transition-colors"
+              >
+                <Pause className="w-3.5 h-3.5" />
+                Tam dung
+              </button>
+            )}
             <button
-              onClick={onStart}
-              disabled={!task.plannedHours}
-              title={!task.plannedHours ? "Planned Hours not set — PM must configure this task first." : undefined}
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors",
-                task.plannedHours
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-              )}
+              onClick={onLogWork}
+              className="flex items-center gap-1.5 text-xs font-semibold border border-border bg-secondary text-foreground rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
             >
-              <Play className="w-3.5 h-3.5" />
-              Bat dau
+              <ClipboardList className="w-3.5 h-3.5" />
+              Log Work
             </button>
-          ) : (
             <button
-              onClick={onPause}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-amber-500 text-white rounded-lg px-3 py-1.5 hover:bg-amber-600 transition-colors"
+              onClick={onFinishReview}
+              className="flex items-center gap-1.5 text-xs font-semibold border border-green-300 bg-green-50 text-green-700 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
             >
-              <Pause className="w-3.5 h-3.5" />
-              Tam dung
+              <CheckCircle className="w-3.5 h-3.5" />
+              Finish &amp; Review
             </button>
-          )}
-          <button
-            onClick={onLogWork}
-            className="flex items-center gap-1.5 text-xs font-semibold border border-border bg-secondary text-foreground rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
-          >
-            <ClipboardList className="w-3.5 h-3.5" />
-            Log Work
-          </button>
-          <button
-            onClick={onFinishReview}
-            className="flex items-center gap-1.5 text-xs font-semibold border border-green-300 bg-green-50 text-green-700 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-            Finish &amp; Review
-          </button>
-        </div>
+          </div>
         </div>
       )}
     </div>
@@ -518,30 +497,106 @@ function PortalTile({
   label,
   count,
   color,
+  active,
   onClick,
 }: {
   icon: React.ElementType;
   label: string;
   count?: number;
   color: string;
+  active?: boolean;
   onClick?: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-3 bg-card border border-border rounded-xl p-5 hover:shadow-md hover:border-primary/30 transition-all group text-center"
+      className={cn(
+        "flex flex-col items-center gap-3 bg-card border rounded-xl p-5 transition-all group text-center",
+        active
+          ? "border-primary ring-1 ring-primary/30 shadow-md"
+          : "border-border hover:shadow-md hover:border-primary/30"
+      )}
     >
       <div className={cn("p-3 rounded-xl", color)}>
         <Icon className="w-6 h-6" />
       </div>
       <div>
-        <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{label}</p>
+        <p className={cn("text-sm font-semibold transition-colors", active ? "text-primary" : "text-foreground group-hover:text-primary")}>
+          {label}
+        </p>
         {count !== undefined && (
           <p className="text-xs text-muted-foreground mt-0.5">{count} item{count !== 1 ? "s" : ""}</p>
         )}
       </div>
-      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors" />
+      <ChevronRight className={cn("w-3.5 h-3.5 transition-colors", active ? "text-primary" : "text-muted-foreground/40 group-hover:text-primary")} />
     </button>
+  );
+}
+
+// ─── Du an cua toi (My Projects View) ────────────────────────────────────────
+
+function MyProjectsView({
+  projects,
+  onSelectProject,
+  activeProjectId,
+}: {
+  projects: EngineerProjectMembership[];
+  onSelectProject: (projectId: string) => void;
+  activeProjectId: string | null;
+}) {
+  return (
+    <div className="space-y-3">
+      {projects.map((p) => {
+        const pct = Math.round((p.overallProgress / p.plannedProgress) * 100);
+        const isActive = p.projectId === activeProjectId;
+        return (
+          <button
+            key={p.projectId}
+            onClick={() => onSelectProject(p.projectId)}
+            className={cn(
+              "w-full text-left bg-card border rounded-xl p-4 hover:shadow-md transition-all group",
+              isActive ? "border-primary ring-1 ring-primary/30 shadow-sm" : "border-border"
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", RAG_DOT[p.ragStatus])} />
+                  <p className={cn("text-sm font-semibold leading-tight group-hover:text-primary transition-colors", isActive && "text-primary")}>
+                    {p.projectName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[10px] font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {p.roleInProject}
+                  </span>
+                  <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", PHASE_COLOR[p.phase])}>
+                    {p.phase}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-xs font-bold text-foreground">{p.overallProgress}%</span>
+                <span className="text-[10px] text-muted-foreground">of {p.plannedProgress}%</span>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-3 space-y-1">
+              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all", p.ragStatus === "red" ? "bg-red-500" : p.ragStatus === "amber" ? "bg-amber-400" : "bg-green-500")}
+                  style={{ width: `${p.overallProgress}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                SPI: {(p.overallProgress / p.plannedProgress).toFixed(2)} &middot; {isActive ? "Viewing tasks" : "Click to filter tasks"}
+              </p>
+            </div>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -602,6 +657,41 @@ function BangChamCong({ history }: { history: (LogWorkEntry & { approved?: boole
   );
 }
 
+// ─── Section Header with Back ─────────────────────────────────────────────────
+
+function SectionHeader({
+  title,
+  subtitle,
+  onBack,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  onBack?: () => void;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 mb-4">
+      <div className="flex items-center gap-2 min-w-0">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Back to home"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
+        <div className="min-w-0">
+          <h2 className="text-sm font-bold text-foreground">{title}</h2>
+          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
 // ─── Operational Portal (Level 3) ────────────────────────────────────────────
 
 export function OperationalPortal({
@@ -613,17 +703,31 @@ export function OperationalPortal({
 }) {
   const [profile] = useState<EngineerProfile>({ ...ENGINEER_PROFILE });
 
-  const tacticalProject = TACTICAL_DATA[profile.projectId];
-  const [tasks, setTasks] = useState<TaskCard[]>(
-    tacticalProject
-      ? tacticalProject.tasks.filter((t) => t.assigneeId === profile.memberId)
-      : []
-  );
+  // All tasks from all projects this engineer is assigned to
+  const [allTasks, setAllTasks] = useState<(TaskCard & { projectId: string; projectName: string })[]>(() => {
+    const result: (TaskCard & { projectId: string; projectName: string })[] = [];
+    profile.projects.forEach((proj) => {
+      const td = TACTICAL_DATA[proj.projectId];
+      if (td) {
+        td.tasks
+          .filter((t) => t.assigneeId === profile.memberId)
+          .forEach((t) => result.push({ ...t, projectId: proj.projectId, projectName: proj.projectName }));
+      }
+    });
+    return result;
+  });
 
-  // Progress per task (0–100)
+  // Active project filter (null = show all)
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+
+  const tasks = activeProjectId
+    ? allTasks.filter((t) => t.projectId === activeProjectId)
+    : allTasks;
+
+  // Progress per task
   const [taskProgress, setTaskProgress] = useState<TaskProgress>(() => {
     const init: TaskProgress = {};
-    tasks.forEach((t) => { init[t.id] = 0; });
+    allTasks.forEach((t) => { init[t.id] = 0; });
     profile.logWorkHistory.forEach((lw) => { init[lw.taskId] = lw.progressPercent; });
     return init;
   });
@@ -631,70 +735,52 @@ export function OperationalPortal({
   // Run state per task
   const [runState, setRunState] = useState<TaskRunState>(() => {
     const init: TaskRunState = {};
-    tasks.forEach((t) => { init[t.id] = "idle"; });
+    allTasks.forEach((t) => { init[t.id] = "idle"; });
     return init;
   });
 
-  // Elapsed time per task (seconds) — accumulated across pause/resume
+  // Elapsed time per task (seconds)
   const [elapsed, setElapsed] = useState<TaskElapsed>(() => {
     const init: TaskElapsed = {};
-    tasks.forEach((t) => { init[t.id] = 0; });
+    allTasks.forEach((t) => { init[t.id] = 0; });
     return init;
   });
 
-  // Which task is currently ticking (only one at a time)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const runningTaskRef = useRef<string | null>(null);
+  const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const runningTaskRef   = useRef<string | null>(null);
 
-  // Actual hours logged per task (sum of log entries)
+  // Actual hours logged per task
   const [actualHours, setActualHours] = useState<TaskActualHours>(() => {
     const init: TaskActualHours = {};
-    tasks.forEach((t) => { init[t.id] = 0; });
-    profile.logWorkHistory.forEach((lw) => {
-      init[lw.taskId] = (init[lw.taskId] ?? 0) + lw.loggedHours;
-    });
+    allTasks.forEach((t) => { init[t.id] = 0; });
+    profile.logWorkHistory.forEach((lw) => { init[lw.taskId] = (init[lw.taskId] ?? 0) + lw.loggedHours; });
     return init;
   });
 
-  // Log work history — combined: pre-seeded + new entries, carries approval flag
   const [logWorkHistory, setLogWorkHistory] = useState<(LogWorkEntry & { approved?: boolean })[]>(
     profile.logWorkHistory.map((lw) => ({ ...lw, approved: false }))
   );
 
   const [notifications, setNotifications] = useState<EngNotification[]>(profile.notifications);
-  const [activeSection, setActiveSection] = useState<"home" | "tasks" | "timesheets">("home");
-
-  // Modal state: "logwork" = normal log, "finish" = final mandatory log
+  const [activeSection, setActiveSection] = useState<ActiveSection>("home");
   const [logModal, setLogModal] = useState<{ task: TaskCard; mode: "logwork" | "finish" } | null>(null);
 
   // ── Timer tick ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const runningId = Object.keys(runState).find((id) => runState[id] === "running") ?? null;
     runningTaskRef.current = runningId;
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (runningId) {
       intervalRef.current = setInterval(() => {
-        setElapsed((prev) => ({
-          ...prev,
-          [runningId]: (prev[runningId] ?? 0) + 1,
-        }));
+        setElapsed((prev) => ({ ...prev, [runningId]: (prev[runningId] ?? 0) + 1 }));
       }, 1000);
     }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [runState]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
   const handleStart = useCallback((taskId: string) => {
-    // Pause any currently running task first
     setRunState((prev) => {
       const next = { ...prev };
       Object.keys(next).forEach((id) => { if (next[id] === "running") next[id] = "paused"; });
@@ -707,45 +793,35 @@ export function OperationalPortal({
     setRunState((prev) => ({ ...prev, [taskId]: "paused" }));
   }, []);
 
-  // Normal Log Work — prefill hours from timer if task is running/paused
   const handleOpenLogWork = useCallback((task: TaskCard) => {
     setLogModal({ task, mode: "logwork" });
   }, []);
 
-  // Finish & Review — opens mandatory final log modal
   const handleFinishReview = useCallback((task: TaskCard) => {
-    // Pause the timer first
     setRunState((prev) => ({ ...prev, [task.id]: "paused" }));
     setLogModal({ task, mode: "finish" });
   }, []);
 
   const handleLogWorkSave = useCallback(
     (entry: Omit<LogWorkEntry, "id">, isFinal: boolean) => {
-      const id = `LW-${Date.now()}`;
+      const id   = `LW-${Date.now()}`;
       const full = { ...entry, id, approved: false };
       setLogWorkHistory((prev) => [...prev, full]);
       setTaskProgress((prev) => ({ ...prev, [entry.taskId]: entry.progressPercent }));
-      setActualHours((prev) => ({
-        ...prev,
-        [entry.taskId]: (prev[entry.taskId] ?? 0) + entry.loggedHours,
-      }));
+      setActualHours((prev) => ({ ...prev, [entry.taskId]: (prev[entry.taskId] ?? 0) + entry.loggedHours }));
 
-      // If final: lock task, reset timer, notify PM
       if (isFinal) {
-        setTasks((prev) =>
+        setAllTasks((prev) =>
           prev.map((t) => (t.id === entry.taskId ? { ...t, status: "Waiting for Review" } : t))
         );
         setRunState((prev) => ({ ...prev, [entry.taskId]: "idle" }));
-        setElapsed((prev) => ({ ...prev, [entry.taskId]: 0 }));
-
-        // Fire PM notification
-        const pmNotif: Omit<EngNotification, "id" | "read"> = {
+        setElapsed((prev)  => ({ ...prev, [entry.taskId]: 0 }));
+        onNotifyPM?.({
           type: "assigned",
           title: "Task Ready for Review",
           body: `${profile.name} submitted "${entry.taskTitle}" for your approval (100% complete).`,
           timestamp: new Date().toISOString(),
-        };
-        onNotifyPM?.(pmNotif);
+        });
       }
 
       onLogWorkSubmit?.(entry.taskId, entry);
@@ -754,12 +830,12 @@ export function OperationalPortal({
     [profile.name, onLogWorkSubmit, onNotifyPM]
   );
 
-  const handleMarkRead = useCallback((id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+  const handleMarkRead    = useCallback((id: string) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n)), []);
+  const handleMarkAllRead = useCallback(() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true }))), []);
 
-  const handleMarkAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const handleSelectProject = useCallback((projectId: string) => {
+    setActiveProjectId((prev) => prev === projectId ? null : projectId);
+    setActiveSection("tasks");
   }, []);
 
   // ── Derived ─────────────────────────────────────────────────────────────────
@@ -768,14 +844,221 @@ export function OperationalPortal({
   const pendingCount  = logWorkHistory.filter((e) => !e.approved).length;
   const approvedCount = logWorkHistory.filter((e) => e.approved).length;
 
-  // For modal: compute prefill hours from elapsed seconds
-  const prefillForModal =
-    logModal
-      ? hoursFromSeconds(elapsed[logModal.task.id] ?? 0)
-      : undefined;
-  // Only prefill if elapsed > 0 (timer was actually used)
-  const hasMeaningfulElapsed =
-    logModal ? (elapsed[logModal.task.id] ?? 0) > 30 : false;
+  const prefillForModal      = logModal ? hoursFromSeconds(elapsed[logModal.task.id] ?? 0) : undefined;
+  const hasMeaningfulElapsed = logModal ? (elapsed[logModal.task.id] ?? 0) > 30 : false;
+
+  const activeProject = activeProjectId
+    ? profile.projects.find((p) => p.projectId === activeProjectId)
+    : null;
+
+  // ── Render sections ──────────────────────────────────────────────────────────
+
+  function renderHome() {
+    return (
+      <>
+        {/* Workspace tiles */}
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+            My Workspace
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <PortalTile
+              icon={Briefcase}
+              label="Du an cua toi"
+              count={profile.projects.length}
+              color="bg-indigo-100 text-indigo-700"
+              active={activeSection === "projects"}
+              onClick={() => setActiveSection("projects")}
+            />
+            <PortalTile
+              icon={ClipboardList}
+              label="Cong viec cua toi"
+              count={activeTasks.length}
+              color="bg-primary/10 text-primary"
+              active={activeSection === "tasks"}
+              onClick={() => { setActiveProjectId(null); setActiveSection("tasks"); }}
+            />
+            <PortalTile
+              icon={Clock}
+              label="Bang cham cong"
+              count={logWorkHistory.length}
+              color="bg-blue-100 text-blue-700"
+              active={activeSection === "timesheets"}
+              onClick={() => setActiveSection("timesheets")}
+            />
+            <PortalTile
+              icon={FileText}
+              label="Tai lieu"
+              color="bg-teal-100 text-teal-700"
+              active={activeSection === "documents"}
+              onClick={() => setActiveSection("documents")}
+            />
+            <PortalTile icon={BookOpen} label="Kien thuc" color="bg-violet-100 text-violet-700" />
+          </div>
+        </section>
+
+        {/* Quick-access: recent tasks */}
+        <section>
+          <SectionHeader
+            title="Cong viec gan day"
+            subtitle={`${activeTasks.length} active across ${profile.projects.length} projects`}
+            action={
+              <button
+                onClick={() => setActiveSection("tasks")}
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                Xem tat ca <ChevronRight className="w-3 h-3" />
+              </button>
+            }
+          />
+          {activeTasks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center bg-card border border-border rounded-xl py-8 text-center gap-2">
+              <CheckCircle className="w-7 h-7 text-green-500" />
+              <p className="text-sm font-semibold text-foreground">All tasks complete</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {activeTasks.slice(0, 3).map((task) => (
+                <MyTaskCard
+                  key={task.id}
+                  task={task}
+                  progress={taskProgress[task.id] ?? 0}
+                  runState={runState[task.id] ?? "idle"}
+                  elapsed={elapsed[task.id] ?? 0}
+                  actualHours={actualHours[task.id] ?? 0}
+                  projectName={task.projectName}
+                  onStart={() => handleStart(task.id)}
+                  onPause={() => handlePause(task.id)}
+                  onFinishReview={() => handleFinishReview(task)}
+                  onLogWork={() => handleOpenLogWork(task)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Quick-access: recent timesheets */}
+        <section>
+          <SectionHeader
+            title="Bang cham cong gan day"
+            subtitle={`${pendingCount} pending · ${approvedCount} approved`}
+            action={
+              <button
+                onClick={() => setActiveSection("timesheets")}
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                Xem tat ca <ChevronRight className="w-3 h-3" />
+              </button>
+            }
+          />
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <BangChamCong history={logWorkHistory.slice(-5)} />
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderProjects() {
+    return (
+      <section>
+        <SectionHeader
+          title="Du an cua toi"
+          subtitle={`${profile.projects.length} project${profile.projects.length !== 1 ? "s" : ""} — click a project to filter tasks`}
+          onBack={() => setActiveSection("home")}
+        />
+        <MyProjectsView
+          projects={profile.projects}
+          onSelectProject={handleSelectProject}
+          activeProjectId={activeProjectId}
+        />
+      </section>
+    );
+  }
+
+  function renderTasks() {
+    return (
+      <section>
+        <SectionHeader
+          title="Cong viec cua toi"
+          subtitle={
+            activeProject
+              ? `Filtered: ${activeProject.projectName} · ${activeTasks.length} active`
+              : `${activeTasks.length} active across all projects`
+          }
+          onBack={() => setActiveSection("home")}
+          action={
+            activeProject ? (
+              <button
+                onClick={() => setActiveProjectId(null)}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground border border-border rounded-lg px-2.5 py-1.5 hover:bg-secondary transition-colors"
+              >
+                <Filter className="w-3 h-3" />
+                {activeProject.projectName}
+                <X className="w-3 h-3" />
+              </button>
+            ) : undefined
+          }
+        />
+        {activeTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center bg-card border border-border rounded-xl py-10 text-center gap-2">
+            <CheckCircle className="w-8 h-8 text-green-500" />
+            <p className="text-sm font-semibold text-foreground">No active tasks{activeProject ? ` in ${activeProject.projectName}` : ""}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {activeTasks.map((task) => (
+              <MyTaskCard
+                key={task.id}
+                task={task}
+                progress={taskProgress[task.id] ?? 0}
+                runState={runState[task.id] ?? "idle"}
+                elapsed={elapsed[task.id] ?? 0}
+                actualHours={actualHours[task.id] ?? 0}
+                projectName={task.projectName}
+                onStart={() => handleStart(task.id)}
+                onPause={() => handlePause(task.id)}
+                onFinishReview={() => handleFinishReview(task)}
+                onLogWork={() => handleOpenLogWork(task)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  function renderTimesheets() {
+    return (
+      <section>
+        <SectionHeader
+          title="Bang cham cong"
+          subtitle={`${logWorkHistory.length} entries · ${pendingCount} pending · ${approvedCount} approved`}
+          onBack={() => setActiveSection("home")}
+        />
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <BangChamCong history={logWorkHistory} />
+        </div>
+      </section>
+    );
+  }
+
+  function renderDocuments() {
+    return (
+      <section>
+        <SectionHeader
+          title="Tai lieu"
+          subtitle="Project documents and attachments"
+          onBack={() => setActiveSection("home")}
+        />
+        <div className="flex flex-col items-center justify-center bg-card border border-border rounded-xl py-14 text-center gap-2">
+          <FileText className="w-8 h-8 text-muted-foreground/40" />
+          <p className="text-sm font-semibold text-foreground">No documents yet</p>
+          <p className="text-xs text-muted-foreground">Documents shared by your PM will appear here.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-full">
@@ -789,7 +1072,7 @@ export function OperationalPortal({
             <div>
               <p className="text-base font-bold text-foreground">LancsNet — {profile.name}</p>
               <p className="text-xs text-muted-foreground">
-                {profile.role} · {profile.department} · {profile.projectName}
+                {profile.role} · {profile.department} · {profile.projects.length} project{profile.projects.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -807,84 +1090,13 @@ export function OperationalPortal({
         </div>
       </div>
 
+      {/* ── Main content ── */}
       <div className="flex-1 px-4 py-5 md:px-6 space-y-6">
-        {/* ── Portal Grid (Odoo-style tiles) ── */}
-        <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-            My Workspace
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <PortalTile
-              icon={ClipboardList}
-              label="Cong viec cua toi"
-              count={activeTasks.length}
-              color="bg-primary/10 text-primary"
-              onClick={() => setActiveSection("tasks")}
-            />
-            <PortalTile
-              icon={ClipboardList}
-              label="Bang cham cong"
-              count={logWorkHistory.length}
-              color="bg-blue-100 text-blue-700"
-              onClick={() => setActiveSection("timesheets")}
-            />
-            <PortalTile icon={FileText} label="Tai lieu"    color="bg-teal-100 text-teal-700" />
-            <PortalTile icon={BookOpen} label="Kien thuc"   color="bg-violet-100 text-violet-700" />
-            <PortalTile icon={MapPin}   label="Dia chi"     color="bg-orange-100 text-orange-700" />
-          </div>
-        </section>
-
-        {/* ── My Active Tasks ── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-foreground">Cong viec cua toi</h2>
-            <span className="text-xs text-muted-foreground">{activeTasks.length} active</span>
-          </div>
-
-          {activeTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center bg-card border border-border rounded-xl py-10 text-center gap-2">
-              <CheckCircle className="w-8 h-8 text-green-500" />
-              <p className="text-sm font-semibold text-foreground">All tasks complete</p>
-              <p className="text-xs text-muted-foreground">No active tasks at this time.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {activeTasks.map((task) => (
-                <MyTaskCard
-                  key={task.id}
-                  task={task}
-                  progress={taskProgress[task.id] ?? 0}
-                  runState={runState[task.id] ?? "idle"}
-                  elapsed={elapsed[task.id] ?? 0}
-                  actualHours={actualHours[task.id] ?? 0}
-                  projectName={profile.projectName}
-                  onStart={() => handleStart(task.id)}
-                  onPause={() => handlePause(task.id)}
-                  onFinishReview={() => handleFinishReview(task)}
-                  onLogWork={() => handleOpenLogWork(task)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ── Bang Cham Cong (Timesheet) ── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-bold text-foreground">Bang cham cong</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {logWorkHistory.length} entries ·{" "}
-                <span className="text-amber-600 font-medium">{pendingCount} pending</span>
-                {" · "}
-                <span className="text-green-600 font-medium">{approvedCount} approved</span>
-              </p>
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <BangChamCong history={logWorkHistory} />
-          </div>
-        </section>
+        {activeSection === "home"        && renderHome()}
+        {activeSection === "projects"    && renderProjects()}
+        {activeSection === "tasks"       && renderTasks()}
+        {activeSection === "timesheets"  && renderTimesheets()}
+        {activeSection === "documents"   && renderDocuments()}
       </div>
 
       {/* ── Log Work / Finish & Review Modal ── */}
@@ -895,10 +1107,7 @@ export function OperationalPortal({
           prefillHours={hasMeaningfulElapsed ? prefillForModal : undefined}
           isFinalLog={logModal.mode === "finish"}
           onSave={(entry) => handleLogWorkSave(entry, logModal.mode === "finish")}
-          onClose={() => {
-            // If closing a finish modal without saving, re-set status (still in progress)
-            setLogModal(null);
-          }}
+          onClose={() => setLogModal(null)}
         />
       )}
     </div>
