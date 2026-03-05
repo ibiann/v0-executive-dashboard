@@ -25,7 +25,8 @@ export interface TaskCard {
   assigneeName: string;
   priority: "high" | "medium" | "low";
   dueDate: string;
-  plannedHours?: number; // for Planned: Xh display on engineer cards
+  plannedHours?: number;  // mandatory for Engineer Start button; denominator for progress
+  description?: string;  // rich description set in Task Creation form
 }
 
 export interface TimesheetEntry {

@@ -10,6 +10,7 @@ import {
   TacticalProjectData,
   Project,
   TeamMember,
+  Phase,
 } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,11 @@ import {
   Bell,
   XCircle,
   ThumbsDown,
+  Plus,
+  FileText,
+  Link2,
+  ListTree,
+  ClipboardList,
 } from "lucide-react";
 import type { ViewRole } from "@/components/dashboard/top-nav";
 
@@ -40,20 +46,15 @@ const PRIORITY_CONFIG = {
   low:    { bg: "bg-blue-50",  text: "text-blue-500",  border: "border-blue-200",  label: "Low"  },
 };
 
-/**
- * Workflow columns differ by role:
- * - Engineer: New → In Progress → Waiting for Review  (cannot place in Done)
- * - PM/Lead:  New → In Progress → Waiting for Review → Done
- */
 const ALL_STATUS_COLUMNS: TaskStatus[] = ["New", "In Progress", "Waiting for Review", "Done"];
 const ENGINEER_STATUS_COLUMNS: TaskStatus[] = ["New", "In Progress", "Waiting for Review"];
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  "New":                  "bg-slate-100 text-slate-600",
-  "In Progress":          "bg-blue-100  text-blue-700",
-  "Waiting for Review":   "bg-amber-100 text-amber-700",
-  "Review":               "bg-amber-100 text-amber-700", // legacy compat
-  "Done":                 "bg-green-100 text-green-700",
+  "New":                "bg-slate-100 text-slate-600",
+  "In Progress":        "bg-blue-100  text-blue-700",
+  "Waiting for Review": "bg-amber-100 text-amber-700",
+  "Review":             "bg-amber-100 text-amber-700",
+  "Done":               "bg-green-100 text-green-700",
 };
 
 const PHASE_COLORS: Record<string, string> = {
@@ -63,7 +64,8 @@ const PHASE_COLORS: Record<string, string> = {
   Release: "bg-green-100  text-green-700",
 };
 
-const PHASE_ORDER: TaskStatus["phase"] extends never ? never : string[] = ["Survey", "R&D", "Test", "Release"];
+const PHASE_ORDER = ["Survey", "R&D", "Test", "Release"];
+const PHASES: Phase[] = ["Survey", "R&D", "Test", "Release"];
 
 function memberInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -71,6 +73,322 @@ function memberInitials(name: string) {
 
 function isReviewerRole(role: ViewRole): boolean {
   return role === "PM" || role === "CTO";
+}
+
+// ─── Task Creation Modal (Odoo-style form) ────────────────────────────────────
+
+interface TaskCreateModalProps {
+  project: Project;
+  team: TeamMember[];
+  onClose: () => void;
+  onSave: (task: TaskCard) => void;
+}
+
+type FormTab = "description" | "timesheets" | "subtasks";
+
+function TaskCreateModal({ project, team, onClose, onSave }: TaskCreateModalProps) {
+  const [title, setTitle]               = useState("");
+  const [phase, setPhase]               = useState<Phase>("Survey");
+  const [assigneeId, setAssigneeId]     = useState(team[0]?.id ?? "");
+  const [plannedHours, setPlannedHours] = useState<string>("");
+  const [dueDate, setDueDate]           = useState("");
+  const [priority, setPriority]         = useState<"high" | "medium" | "low">("medium");
+  const [description, setDescription]  = useState("");
+  const [formTab, setFormTab]           = useState<FormTab>("description");
+  const [errors, setErrors]             = useState<Record<string, string>>({});
+
+  const assignee = team.find((m) => m.id === assigneeId);
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!title.trim())      e.title       = "Task title is required.";
+    if (!assigneeId)        e.assigneeId  = "Please select an assignee.";
+    if (!plannedHours || isNaN(Number(plannedHours)) || Number(plannedHours) <= 0)
+                            e.plannedHours = "Thời gian dự kiến (planned hours) is required and must be > 0.";
+    if (!dueDate)           e.dueDate     = "Deadline is required.";
+    return e;
+  }
+
+  function handleSave() {
+    const e = validate();
+    if (Object.keys(e).length > 0) { setErrors(e); return; }
+
+    const newTask: TaskCard = {
+      id:           `T-${Date.now().toString().slice(-5)}`,
+      title:        title.trim(),
+      phase,
+      status:       "New",
+      assigneeId,
+      assigneeName: assignee?.name ?? "",
+      priority,
+      dueDate,
+      plannedHours: Number(plannedHours),
+      description:  description.trim() || undefined,
+    };
+    onSave(newTask);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div className="relative z-10 w-full max-w-2xl bg-card rounded-xl shadow-2xl border border-border flex flex-col max-h-[90vh] overflow-hidden">
+
+        {/* ── Dark header with breadcrumbs (Odoo-style) ── */}
+        <div className="bg-sidebar px-5 py-3.5 shrink-0">
+          <nav className="flex items-center gap-1.5 text-xs text-sidebar-foreground/60 mb-1.5">
+            <span>Du an</span>
+            <ChevronRight className="w-3 h-3" />
+            <span>{project.name}</span>
+            <ChevronRight className="w-3 h-3" />
+            <span>Nhiem vu</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-sidebar-foreground font-semibold">Tao moi</span>
+          </nav>
+          <h2 className="text-sm font-bold text-white">
+            {title.trim() || "Nhiem vu moi"}
+          </h2>
+
+          {/* Smart Buttons row */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => setFormTab("timesheets")}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors",
+                formTab === "timesheets"
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "border-white/20 text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              Timesheets
+              <span className="ml-1 bg-white/20 text-white rounded px-1 text-[10px] font-bold">0h</span>
+            </button>
+            <button
+              onClick={() => setFormTab("subtasks")}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors",
+                formTab === "subtasks"
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "border-white/20 text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <ListTree className="w-3.5 h-3.5" />
+              Sub-tasks
+              <span className="ml-1 bg-white/20 text-white rounded px-1 text-[10px] font-bold">0</span>
+            </button>
+            <button className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border border-white/20 text-sidebar-foreground/70 hover:bg-white/10 hover:text-white transition-colors">
+              <Link2 className="w-3.5 h-3.5" />
+              Parent Task
+            </button>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+
+          {/* Task Title */}
+          <div>
+            <label className="block text-xs font-semibold text-foreground mb-1.5">
+              Ten nhiem vu <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: "" })); }}
+              placeholder="Nhap ten nhiem vu ky thuat..."
+              className={cn(
+                "w-full text-sm border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring",
+                errors.title ? "border-red-400" : "border-border"
+              )}
+            />
+            {errors.title && <p className="text-[11px] text-red-600 mt-1">{errors.title}</p>}
+          </div>
+
+          {/* Grid: Phase | Priority */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Pha <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={phase}
+                onChange={(e) => setPhase(e.target.value as Phase)}
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {PHASES.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">Muc do uu tien</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as "high" | "medium" | "low")}
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Grid: Assignee | Planned Hours */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Nguoi phu trach <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={assigneeId}
+                onChange={(e) => { setAssigneeId(e.target.value); setErrors((p) => ({ ...p, assigneeId: "" })); }}
+                className={cn(
+                  "w-full text-sm border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring",
+                  errors.assigneeId ? "border-red-400" : "border-border"
+                )}
+              >
+                <option value="">-- Chon ky su --</option>
+                {team.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                ))}
+              </select>
+              {errors.assigneeId && <p className="text-[11px] text-red-600 mt-1">{errors.assigneeId}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Thoi gian du kien (gio) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={plannedHours}
+                onChange={(e) => { setPlannedHours(e.target.value); setErrors((p) => ({ ...p, plannedHours: "" })); }}
+                placeholder="e.g. 40"
+                className={cn(
+                  "w-full text-sm border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring",
+                  errors.plannedHours ? "border-red-400" : "border-border"
+                )}
+              />
+              {errors.plannedHours && <p className="text-[11px] text-red-600 mt-1">{errors.plannedHours}</p>}
+              {!errors.plannedHours && (
+                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Required — engineer cannot start task without this value.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div className="max-w-xs">
+            <label className="block text-xs font-semibold text-foreground mb-1.5">
+              Han chot <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => { setDueDate(e.target.value); setErrors((p) => ({ ...p, dueDate: "" })); }}
+              className={cn(
+                "w-full text-sm border rounded-lg px-3 py-2.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring",
+                errors.dueDate ? "border-red-400" : "border-border"
+              )}
+            />
+            {errors.dueDate && <p className="text-[11px] text-red-600 mt-1">{errors.dueDate}</p>}
+          </div>
+
+          {/* Form sub-tabs: Description | Timesheets | Sub-tasks */}
+          <div className="border border-border rounded-xl overflow-hidden">
+            <div className="flex border-b border-border bg-muted/40">
+              {([
+                { id: "description", icon: <FileText className="w-3.5 h-3.5" />, label: "Mo ta nhiem vu" },
+                { id: "timesheets",  icon: <Clock className="w-3.5 h-3.5" />,    label: "Timesheets" },
+                { id: "subtasks",    icon: <ListTree className="w-3.5 h-3.5" />,  label: "Sub-tasks" },
+              ] as { id: FormTab; icon: React.ReactNode; label: string }[]).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFormTab(tab.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors",
+                    formTab === tab.id
+                      ? "bg-card text-foreground border-b-2 border-primary -mb-px"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4">
+              {formTab === "description" && (
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-2">
+                    Mo ta chi tiet nhiem vu, muc tieu, tieu chi hoan thanh...
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={6}
+                    placeholder="Nhap mo ta ky thuat..."
+                    className="w-full text-sm border border-border rounded-lg px-3 py-2.5 bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              )}
+              {formTab === "timesheets" && (
+                <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
+                  <Clock className="w-8 h-8 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground font-medium">Chua co ban ghi thoi gian</p>
+                  <p className="text-xs text-muted-foreground/60">Timesheet entries will appear here once work is logged by the assigned engineer.</p>
+                </div>
+              )}
+              {formTab === "subtasks" && (
+                <div className="flex flex-col items-center justify-center py-6 gap-2 text-center">
+                  <ListTree className="w-8 h-8 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground font-medium">Chua co nhiem vu con</p>
+                  <p className="text-xs text-muted-foreground/60">Sub-tasks can be added after the task is created.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Preview card */}
+          {title.trim() && assignee && plannedHours && (
+            <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Xem truoc the nhiem vu</p>
+              <div className="flex items-center gap-2">
+                <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium", PHASE_COLORS[phase])}>{phase}</span>
+                <span className="text-xs font-semibold text-foreground truncate">{title}</span>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><User className="w-3 h-3" />{assignee.name}</span>
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{plannedHours}h planned</span>
+                {dueDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{dueDate}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-t border-border shrink-0 bg-muted/20">
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">
+            Huy
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="text-xs text-muted-foreground">
+              Luu & Tao moi
+            </Button>
+            <Button size="sm" onClick={handleSave} className="text-xs gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Luu nhiem vu
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Smart Buttons ────────────────────────────────────────────────────────────
@@ -84,9 +402,9 @@ function SmartButtons({
   tactical: TacticalProjectData;
   onTabChange: (tab: Tab) => void;
 }) {
-  const totalHours = tactical.timesheets.reduce((s, t) => s + t.loggedHours, 0);
+  const totalHours       = tactical.timesheets.reduce((s, t) => s + t.loggedHours, 0);
   const pendingTimesheets = tactical.timesheets.filter((t) => !t.approved).length;
-  const reviewTasks = tactical.tasks.filter((t) => t.status === "Waiting for Review").length;
+  const reviewTasks      = tactical.tasks.filter((t) => t.status === "Waiting for Review").length;
 
   const buttons = [
     {
@@ -204,7 +522,7 @@ function PhasePlanTab({
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
 }) {
-  const [phases, setPhases] = useState<PhaseDefinition[]>(tactical.phases);
+  const [phases, setPhases]   = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
 
   function handleChange(idx: number, field: keyof PhaseDefinition, value: string | number) {
@@ -223,12 +541,10 @@ function PhasePlanTab({
         <p className="text-xs text-muted-foreground">
           Define phase start/end dates and their weight in total project progress. Weights must sum to 100%.
         </p>
-        <span
-          className={cn(
-            "text-xs font-semibold px-2 py-0.5 rounded-full",
-            totalWeight === 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
-          )}
-        >
+        <span className={cn(
+          "text-xs font-semibold px-2 py-0.5 rounded-full",
+          totalWeight === 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+        )}>
           Total: {totalWeight}%
         </span>
       </div>
@@ -340,6 +656,7 @@ function TaskDetailPanel({
   task,
   role,
   lockedTaskIds,
+  timesheets,
   onClose,
   onApprove,
   onReject,
@@ -347,20 +664,28 @@ function TaskDetailPanel({
   task: TaskCard;
   role: ViewRole;
   lockedTaskIds: Set<string>;
+  timesheets: TimesheetEntry[];
   onClose: () => void;
   onApprove?: (taskId: string) => void;
   onReject?: (taskId: string, reason: string) => void;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>(DEFAULT_CHATTER);
-  const [draft, setDraft] = useState("");
-  const [rejectMode, setRejectMode] = useState(false);
+  const [messages,     setMessages]     = useState<ChatMessage[]>(DEFAULT_CHATTER);
+  const [draft,        setDraft]        = useState("");
+  const [rejectMode,   setRejectMode]   = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [rejectError, setRejectError] = useState(false);
+  const [rejectError,  setRejectError]  = useState(false);
+  const [detailTab,    setDetailTab]    = useState<"chatter" | "timesheets" | "description">("chatter");
 
-  const isLocked = lockedTaskIds.has(task.id);
-  const isPM = isReviewerRole(role);
+  const isLocked       = lockedTaskIds.has(task.id);
+  const isPM           = isReviewerRole(role);
   const isAwaitingReview = task.status === "Waiting for Review";
-  const priority = PRIORITY_CONFIG[task.priority];
+  const priority       = PRIORITY_CONFIG[task.priority];
+
+  // Logged hours on this task (approved + pending)
+  const taskLogs       = timesheets.filter((t) => t.taskId === task.id);
+  const approvedHours  = taskLogs.filter((t) => t.approved).reduce((s, t) => s + t.loggedHours, 0);
+  const pendingHours   = taskLogs.filter((t) => !t.approved).reduce((s, t) => s + t.loggedHours, 0);
+  const plannedHours   = task.plannedHours ?? 0;
 
   function sendMessage() {
     if (!draft.trim()) return;
@@ -396,46 +721,70 @@ function TaskDetailPanel({
     <div className="fixed inset-0 z-[70] flex items-center justify-end">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden="true" />
       <aside className="relative z-10 h-full w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2 px-5 py-3.5 border-b border-border shrink-0">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-            <span>Kanban</span>
+
+        {/* Dark header */}
+        <div className="bg-sidebar px-5 py-3.5 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-sidebar-foreground/60 mb-1">
+            <span>Du an</span>
             <ChevronRight className="w-3 h-3" />
-            <span className="text-foreground font-semibold truncate">{task.id}</span>
+            <span>Nhiem vu</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-sidebar-foreground font-semibold truncate">{task.id}</span>
           </div>
-          <div className="flex items-center gap-2">
-            {isLocked && (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                <Lock className="w-2.5 h-2.5" /> Locked
-              </span>
-            )}
-            <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors text-xs">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-sm font-bold text-white leading-snug flex-1">{task.title}</h3>
+            <button onClick={onClose} className="text-sidebar-foreground/60 hover:text-white text-xs shrink-0 mt-0.5">
               Close
             </button>
+          </div>
+
+          {/* Smart buttons inside detail panel header */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => setDetailTab("timesheets")}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border transition-colors",
+                detailTab === "timesheets"
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "border-white/20 text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <Clock className="w-3 h-3" />
+              Timesheets
+              <span className="bg-white/20 text-white rounded px-1 text-[10px] font-bold">
+                {approvedHours + pendingHours}h
+              </span>
+            </button>
+            <button
+              onClick={() => setDetailTab("description")}
+              className={cn(
+                "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded border transition-colors",
+                detailTab === "description"
+                  ? "bg-white/20 border-white/30 text-white"
+                  : "border-white/20 text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <FileText className="w-3 h-3" />
+              Mo ta
+            </button>
+            {isLocked && (
+              <span className="flex items-center gap-1 text-[10px] text-sidebar-foreground/60 ml-auto">
+                <Lock className="w-3 h-3" /> Locked
+              </span>
+            )}
           </div>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Title + meta */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-bold text-foreground leading-snug">{task.title}</h3>
-            <div className="flex flex-wrap gap-2">
-              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", PHASE_COLORS[task.phase])}>{task.phase}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", STATUS_COLORS[task.status])}>{task.status}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold border", priority.bg, priority.text, priority.border)}>
-                {priority.label} Priority
-              </span>
-            </div>
-          </div>
 
-          {/* Details grid */}
+          {/* Meta grid */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             {[
-              ["Task ID",  task.id],
-              ["Assignee", task.assigneeName],
-              ["Due Date", task.dueDate],
-              ["Phase",    task.phase],
+              ["Task ID",      task.id],
+              ["Assignee",     task.assigneeName],
+              ["Phase",        task.phase],
+              ["Due Date",     task.dueDate],
             ].map(([label, value]) => (
               <div key={label} className="bg-muted/30 rounded-md px-3 py-2">
                 <p className="text-muted-foreground mb-0.5">{label}</p>
@@ -444,7 +793,46 @@ function TaskDetailPanel({
             ))}
           </div>
 
-          {/* PM Review Actions — only shown for PM on Waiting for Review tasks */}
+          {/* Planned vs Logged hours progress */}
+          {plannedHours > 0 && (
+            <div className="bg-muted/20 border border-border rounded-lg px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-foreground">Hours Progress</span>
+                <span className={cn(
+                  "font-bold",
+                  approvedHours + pendingHours > plannedHours ? "text-red-600" : "text-foreground"
+                )}>
+                  {approvedHours + pendingHours}h / {plannedHours}h
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-border overflow-hidden flex">
+                <div
+                  className="h-full rounded-l-full bg-green-500 transition-all"
+                  style={{ width: `${Math.min((approvedHours / plannedHours) * 100, 100)}%` }}
+                />
+                <div
+                  className="h-full bg-amber-400 transition-all"
+                  style={{ width: `${Math.min((pendingHours / plannedHours) * 100, Math.max(0, 100 - (approvedHours / plannedHours) * 100))}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />{approvedHours}h approved</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />{pendingHours}h pending</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-border inline-block" />{Math.max(0, plannedHours - approvedHours - pendingHours)}h remaining</span>
+              </div>
+            </div>
+          )}
+
+          {!plannedHours && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <p className="text-xs text-amber-700">
+                <strong>Thoi gian du kien chua duoc dat.</strong> Engineer will not be able to start this task.
+              </p>
+            </div>
+          )}
+
+          {/* PM Review Actions */}
           {isPM && isAwaitingReview && !isLocked && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
               <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
@@ -498,7 +886,6 @@ function TaskDetailPanel({
             </div>
           )}
 
-          {/* Locked notice for timesheets */}
           {isLocked && (
             <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2.5">
               <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -508,91 +895,137 @@ function TaskDetailPanel({
             </div>
           )}
 
-          {/* Chatter */}
-          <section>
-            <div className="flex items-center gap-1.5 mb-3">
-              <MessageSquare className="w-3.5 h-3.5 text-primary" />
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chatter</h4>
-            </div>
-
-            <div className="space-y-3 mb-3">
-              {messages.map((msg) => (
-                <div key={msg.id} className={cn("flex items-start gap-2.5", msg.type === "rejection" && "")}>
-                  <div className={cn(
-                    "flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold shrink-0",
-                    msg.type === "rejection" ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"
-                  )}>
-                    {msg.initials}
-                  </div>
-                  <div className={cn(
-                    "flex-1 min-w-0 rounded-lg px-3 py-2",
-                    msg.type === "rejection" ? "bg-red-50 border border-red-200" : "bg-muted/30"
-                  )}>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xs font-semibold text-foreground">{msg.author}</span>
-                      <span className="text-[10px] text-muted-foreground">{msg.time}</span>
+          {/* Detail tab content */}
+          {detailTab === "chatter" && (
+            <section>
+              <div className="flex items-center gap-1.5 mb-3">
+                <MessageSquare className="w-3.5 h-3.5 text-primary" />
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chatter</h4>
+              </div>
+              <div className="space-y-3 mb-3">
+                {messages.map((msg) => (
+                  <div key={msg.id} className="flex items-start gap-2.5">
+                    <div className={cn(
+                      "flex items-center justify-center w-7 h-7 rounded-full text-[10px] font-bold shrink-0",
+                      msg.type === "rejection" ? "bg-red-500 text-white" : "bg-primary text-primary-foreground"
+                    )}>
+                      {msg.initials}
                     </div>
-                    <p className={cn("text-xs mt-0.5 leading-relaxed", msg.type === "rejection" ? "text-red-700 font-medium" : "text-muted-foreground")}>
-                      {msg.text}
-                    </p>
+                    <div className={cn(
+                      "flex-1 min-w-0 rounded-lg px-3 py-2",
+                      msg.type === "rejection" ? "bg-red-50 border border-red-200" : "bg-muted/30"
+                    )}>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-semibold text-foreground">{msg.author}</span>
+                        <span className="text-[10px] text-muted-foreground">{msg.time}</span>
+                      </div>
+                      <p className={cn("text-xs mt-0.5 leading-relaxed", msg.type === "rejection" ? "text-red-700 font-medium" : "text-muted-foreground")}>
+                        {msg.text}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                  rows={2}
+                  disabled={isLocked}
+                  placeholder={isLocked ? "Locked — no further messages" : "Write a message… (Enter to send)"}
+                  className={cn(
+                    "flex-1 text-xs border border-border rounded-lg px-3 py-2 bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring",
+                    isLocked && "opacity-50 cursor-not-allowed"
+                  )}
+                />
+                {!isLocked && (
+                  <Button size="sm" onClick={sendMessage} className="self-end h-7 px-2.5 text-xs">Send</Button>
+                )}
+              </div>
+            </section>
+          )}
 
-            {/* Compose — disabled when task is locked */}
-            <div className="flex gap-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                rows={2}
-                placeholder={isLocked ? "Chatter is locked for approved tasks." : "Log a note or message…"}
-                disabled={isLocked}
-                className="flex-1 text-xs border border-border rounded-md px-3 py-2 bg-background resize-none focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <Button size="sm" onClick={sendMessage} disabled={isLocked} className="self-end text-xs">
-                Send
-              </Button>
-            </div>
-          </section>
+          {detailTab === "timesheets" && (
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Timesheet Logs</h4>
+              {taskLogs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No timesheet entries for this task yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {taskLogs.map((log) => (
+                    <div key={log.id} className={cn(
+                      "rounded-lg border px-3 py-2 text-xs space-y-1",
+                      log.approved ? "bg-green-50/40 border-green-200" : "bg-muted/20 border-border"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">{log.memberName}</span>
+                        <span className={cn(
+                          "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+                          log.approved ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                        )}>{log.approved ? "Approved" : "Pending"}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <span>{log.date}</span>
+                        <span className="font-semibold text-foreground">{log.loggedHours}h</span>
+                        <span>{log.progressPercent}% progress</span>
+                      </div>
+                      <p className="text-muted-foreground leading-relaxed">{log.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {detailTab === "description" && (
+            <section className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mo ta nhiem vu</h4>
+              {task.description ? (
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{task.description}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Chua co mo ta. PM co the them mo ta khi tao hoac chinh sua nhiem vu.</p>
+              )}
+            </section>
+          )}
         </div>
       </aside>
     </div>
   );
 }
 
-// ─── Kanban Board Tab ─────────────────────────────────────────────────────────
+// ─── Kanban Board ─────────────────────────────────────────────────────────────
 
 function KanbanTab({
   tasks,
+  timesheets,
   role,
   lockedTaskIds,
   onTasksChange,
   onApproveTask,
   onRejectTask,
+  onCreateTask,
 }: {
   tasks: TaskCard[];
+  timesheets: TimesheetEntry[];
   role: ViewRole;
   lockedTaskIds: Set<string>;
   onTasksChange: (tasks: TaskCard[]) => void;
   onApproveTask: (taskId: string) => void;
   onRejectTask: (taskId: string, reason: string) => void;
+  onCreateTask: () => void;
 }) {
-  const [dragTaskId, setDragTaskId] = useState<string | null>(null);
-  const [dragOverCol, setDragOverCol] = useState<TaskStatus | null>(null);
+  const [dragTaskId,   setDragTaskId]   = useState<string | null>(null);
+  const [dragOverCol,  setDragOverCol]  = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskCard | null>(null);
 
   const isPM = isReviewerRole(role);
   const allowedColumns = isPM ? ALL_STATUS_COLUMNS : ENGINEER_STATUS_COLUMNS;
 
-  function handleDragStart(taskId: string) {
-    setDragTaskId(taskId);
-  }
+  function handleDragStart(taskId: string) { setDragTaskId(taskId); }
 
   function handleDrop(col: TaskStatus) {
     if (!dragTaskId) return;
-    // Engineers cannot drop into Done
     if (!isPM && col === "Done") return;
     onTasksChange(tasks.map((t) => (t.id === dragTaskId ? { ...t, status: col } : t)));
     setDragTaskId(null);
@@ -600,7 +1033,6 @@ function KanbanTab({
   }
 
   function handleDragOver(e: React.DragEvent, col: TaskStatus) {
-    // Prevent drop visual if engineer tries to drag to Done
     if (!isPM && col === "Done") return;
     e.preventDefault();
     setDragOverCol(col);
@@ -613,20 +1045,35 @@ function KanbanTab({
 
   return (
     <>
-      {/* Engineer guidance bar */}
-      {!isPM && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 mb-3">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-          As an Engineer, you can move tasks up to &ldquo;Waiting for Review&rdquo;. Only a PM can mark tasks as Done.
-        </div>
-      )}
+      {/* Toolbar row */}
+      <div className="flex items-center justify-between mb-3 gap-3">
+        {!isPM && (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700 flex-1">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            As an Engineer, you can move tasks up to &ldquo;Waiting for Review&rdquo;. Only a PM can mark tasks as Done.
+          </div>
+        )}
+        {isPM && (
+          <div className="flex-1" />
+        )}
+        {isPM && (
+          <Button
+            size="sm"
+            onClick={onCreateTask}
+            className="h-8 px-3 text-xs gap-1.5 shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Tao nhiem vu moi
+          </Button>
+        )}
+      </div>
 
       <div className="flex gap-3 overflow-x-auto pb-2">
         {ALL_STATUS_COLUMNS.map((col) => {
-          const isDoneCol = col === "Done";
-          const isReviewCol = col === "Waiting for Review";
+          const isDoneCol       = col === "Done";
+          const isReviewCol     = col === "Waiting for Review";
           const engineerBlocked = !isPM && isDoneCol;
-          const columnTasks = tasksByStatus[col];
+          const columnTasks     = tasksByStatus[col];
 
           return (
             <div
@@ -636,7 +1083,6 @@ function KanbanTab({
               onDrop={() => handleDrop(col)}
               className={cn(
                 "flex flex-col gap-2 min-w-[220px] max-w-[260px] flex-1 rounded-xl p-3 border transition-colors",
-                // Done column is visually muted = "verified zone"
                 isDoneCol
                   ? "bg-muted/20 border-border/50 opacity-90"
                   : dragOverCol === col && !engineerBlocked
@@ -651,21 +1097,22 @@ function KanbanTab({
                   <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", STATUS_COLORS[col])}>
                     {col}
                   </span>
-                  {isDoneCol && (
-                    <span className="text-[10px] text-muted-foreground italic">verified</span>
-                  )}
-                  {engineerBlocked && (
-                    <Lock className="w-3 h-3 text-muted-foreground/50" />
-                  )}
+                  {isDoneCol && <span className="text-[10px] text-muted-foreground italic">verified</span>}
+                  {engineerBlocked && <Lock className="w-3 h-3 text-muted-foreground/50" />}
                 </div>
                 <span className="text-xs text-muted-foreground font-medium">{columnTasks.length}</span>
               </div>
 
               {/* Cards */}
               {columnTasks.map((task) => {
-                const priority = PRIORITY_CONFIG[task.priority];
+                const priority       = PRIORITY_CONFIG[task.priority];
                 const isWaitingReview = task.status === "Waiting for Review";
-                const isLocked = lockedTaskIds.has(task.id);
+                const isLocked       = lockedTaskIds.has(task.id);
+                const plannedHours   = task.plannedHours ?? 0;
+                const taskLogs       = timesheets.filter((t) => t.taskId === task.id);
+                const loggedHours    = taskLogs.reduce((s, t) => s + t.loggedHours, 0);
+                const isOverBudget   = plannedHours > 0 && loggedHours > plannedHours;
+                const logPct         = plannedHours > 0 ? Math.min(Math.round((loggedHours / plannedHours) * 100), 100) : 0;
 
                 return (
                   <div
@@ -675,7 +1122,6 @@ function KanbanTab({
                     onClick={() => setSelectedTask(task)}
                     className={cn(
                       "bg-card border rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-all space-y-2 group",
-                      // Pulsing amber border for "Waiting for Review"
                       isWaitingReview && "border-amber-400 animate-pulse-border",
                       !isWaitingReview && !isLocked && "border-border hover:border-primary/40 cursor-grab active:cursor-grabbing",
                       isLocked && "border-border opacity-70 cursor-not-allowed",
@@ -706,7 +1152,33 @@ function KanbanTab({
                           Pending
                         </span>
                       )}
+                      {!task.plannedHours && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-red-50 text-red-500 border border-red-200 flex items-center gap-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" /> No plan
+                        </span>
+                      )}
                     </div>
+
+                    {/* Planned vs Logged hours mini-bar */}
+                    {plannedHours > 0 && (
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            {loggedHours}h / {plannedHours}h
+                          </span>
+                          <span className={cn("font-semibold", isOverBudget ? "text-red-600" : "text-muted-foreground")}>
+                            {logPct}%{isOverBudget ? " !" : ""}
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full bg-border overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full transition-all", isOverBudget ? "bg-red-500" : "bg-primary")}
+                            style={{ width: `${logPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Assignee + due */}
                     <div className="flex items-center justify-between gap-2">
@@ -719,7 +1191,7 @@ function KanbanTab({
                       <span className="text-[10px] text-muted-foreground shrink-0">{task.dueDate}</span>
                     </div>
 
-                    {/* PM-only Approve button directly on the card (Waiting for Review only) */}
+                    {/* PM-only Approve / Reject inline buttons */}
                     {isPM && isWaitingReview && !isLocked && (
                       <div className="pt-1 border-t border-amber-200 flex gap-1.5">
                         <Button
@@ -748,7 +1220,9 @@ function KanbanTab({
                   "text-xs text-muted-foreground text-center py-4 border border-dashed rounded-lg",
                   engineerBlocked ? "border-muted/30 text-muted-foreground/30" : "border-border"
                 )}>
-                  {engineerBlocked ? "PM only" : "Drop here"}
+                  {engineerBlocked ? "PM only" : col === "New" && isPM ? (
+                    <span className="cursor-pointer hover:text-primary" onClick={onCreateTask}>+ Add task</span>
+                  ) : "Drop here"}
                 </p>
               )}
             </div>
@@ -761,6 +1235,7 @@ function KanbanTab({
           task={selectedTask}
           role={role}
           lockedTaskIds={lockedTaskIds}
+          timesheets={timesheets}
           onClose={() => setSelectedTask(null)}
           onApprove={(taskId) => { onApproveTask(taskId); setSelectedTask(null); }}
           onReject={(taskId, reason) => { onRejectTask(taskId, reason); setSelectedTask(null); }}
@@ -825,6 +1300,11 @@ function ResourceTab({ team, tasks }: { team: TeamMember[]; tasks: TaskCard[] })
                         t.status === "Waiting for Review" ? "bg-amber-400" : "bg-slate-400"
                       )} />
                       <span className="flex-1 text-foreground truncate">{t.title}</span>
+                      {t.plannedHours && (
+                        <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />{t.plannedHours}h
+                        </span>
+                      )}
                       <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0", PHASE_COLORS[t.phase])}>
                         {t.phase}
                       </span>
@@ -851,7 +1331,7 @@ function TimesheetTab({
   lockedTaskIds: Set<string>;
   onApprove: (id: string) => void;
 }) {
-  const pending = timesheets.filter((t) => !t.approved);
+  const pending  = timesheets.filter((t) => !t.approved);
   const approved = timesheets.filter((t) => t.approved);
 
   function renderRow(entry: TimesheetEntry) {
@@ -978,10 +1458,10 @@ function TimesheetTab({
 type Tab = "phases" | "kanban" | "resources" | "timesheets";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "phases",     label: "Phase Plan",          icon: <Calendar className="w-3.5 h-3.5" /> },
-  { id: "kanban",     label: "Task Kanban",          icon: <GripVertical className="w-3.5 h-3.5" /> },
-  { id: "resources",  label: "Resource Allocation",  icon: <Users className="w-3.5 h-3.5" /> },
-  { id: "timesheets", label: "Timesheet Approval",   icon: <Clock className="w-3.5 h-3.5" /> },
+  { id: "phases",     label: "Phase Plan",         icon: <Calendar className="w-3.5 h-3.5" /> },
+  { id: "kanban",     label: "Task Kanban",         icon: <ClipboardList className="w-3.5 h-3.5" /> },
+  { id: "resources",  label: "Resource Allocation", icon: <Users className="w-3.5 h-3.5" /> },
+  { id: "timesheets", label: "Timesheet Approval",  icon: <Clock className="w-3.5 h-3.5" /> },
 ];
 
 interface TacticalViewProps {
@@ -1001,16 +1481,14 @@ export function TacticalView({
   onPhaseSave,
   onTasksChange,
 }: TacticalViewProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("phases");
-  // Track which task IDs are locked (PM approved → timesheets locked + task fixed to Done)
+  const [activeTab,     setActiveTab]     = useState<Tab>("phases");
   const [lockedTaskIds, setLockedTaskIds] = useState<Set<string>>(new Set());
-  // Phase completion banner state
-  const [phaseBanners, setPhaseBanners] = useState<string[]>([]);
+  const [phaseBanners,  setPhaseBanners]  = useState<string[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const pendingCount = tactical.timesheets.filter((t) => !t.approved).length;
   const reviewCount  = tactical.tasks.filter((t) => t.status === "Waiting for Review").length;
 
-  // ── Phase completion check ─────────────────────────────────────────────────
   function checkPhaseCompletion(tasks: TaskCard[]) {
     PHASE_ORDER.forEach((phase) => {
       const phaseTasks = tasks.filter((t) => t.phase === phase);
@@ -1022,22 +1500,15 @@ export function TacticalView({
     });
   }
 
-  // ── Approve a Kanban task (PM/CTO only) ────────────────────────────────────
   function handleApproveTask(taskId: string) {
-    // Move task to Done
     const updatedTasks = tactical.tasks.map((t) =>
       t.id === taskId ? { ...t, status: "Done" as TaskStatus } : t
     );
     onTasksChange(project.id, updatedTasks);
-
-    // Lock the task (no more edits to timesheets)
     setLockedTaskIds((prev) => new Set([...prev, taskId]));
-
-    // Check for phase completion
     checkPhaseCompletion(updatedTasks);
   }
 
-  // ── Reject a Kanban task — sends back to In Progress ──────────────────────
   function handleRejectTask(taskId: string, _reason: string) {
     const updatedTasks = tactical.tasks.map((t) =>
       t.id === taskId ? { ...t, status: "In Progress" as TaskStatus } : t
@@ -1045,12 +1516,10 @@ export function TacticalView({
     onTasksChange(project.id, updatedTasks);
   }
 
-  // ── Start Next Phase smart button ─────────────────────────────────────────
   function handleStartNextPhase(completedPhase: string) {
     const idx = PHASE_ORDER.indexOf(completedPhase);
     if (idx < 0 || idx >= PHASE_ORDER.length - 1) return;
     const nextPhase = PHASE_ORDER[idx + 1];
-    // Activate next-phase tasks: move any "New" tasks for next phase to "In Progress"
     const updatedTasks = tactical.tasks.map((t) =>
       t.phase === nextPhase && t.status === "New"
         ? { ...t, status: "In Progress" as TaskStatus }
@@ -1063,6 +1532,10 @@ export function TacticalView({
 
   function dismissBanner(phase: string) {
     setPhaseBanners((prev) => prev.filter((p) => p !== phase));
+  }
+
+  function handleCreateTask(newTask: TaskCard) {
+    onTasksChange(project.id, [...tactical.tasks, newTask]);
   }
 
   return (
@@ -1091,7 +1564,7 @@ export function TacticalView({
               <span className="text-xs text-muted-foreground">{project.department}</span>
             </div>
             <h2 className="text-base font-bold text-foreground">{project.name}</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">PM: {project.pm} · {project.startDate} → {project.endDate}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">PM: {project.pm} · {project.startDate} &rarr; {project.endDate}</p>
           </div>
 
           <div className="flex flex-col items-end gap-1 shrink-0">
@@ -1148,11 +1621,13 @@ export function TacticalView({
         {activeTab === "kanban" && (
           <KanbanTab
             tasks={tactical.tasks}
+            timesheets={tactical.timesheets}
             role={role}
             lockedTaskIds={lockedTaskIds}
             onTasksChange={(tasks) => onTasksChange(project.id, tasks)}
             onApproveTask={handleApproveTask}
             onRejectTask={handleRejectTask}
+            onCreateTask={() => { setShowCreateModal(true); setActiveTab("kanban"); }}
           />
         )}
         {activeTab === "resources" && (
@@ -1166,6 +1641,16 @@ export function TacticalView({
           />
         )}
       </div>
+
+      {/* Task Creation Modal */}
+      {showCreateModal && (
+        <TaskCreateModal
+          project={project}
+          team={tactical.team}
+          onClose={() => setShowCreateModal(false)}
+          onSave={handleCreateTask}
+        />
+      )}
     </div>
   );
 }

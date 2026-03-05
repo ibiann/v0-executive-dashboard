@@ -457,11 +457,26 @@ function MyTaskCard({
 
       {/* Action buttons — hidden when locked */}
       {!isLocked && (
+        <div className="flex flex-col gap-2">
+          {/* Planned-hours gate: block Start if PM hasn't set planned hours */}
+          {!task.plannedHours && runState !== "running" && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>PM chua dat <strong>Thoi gian du kien</strong>. Khong the bat dau nhiem vu nay.</span>
+            </div>
+          )}
         <div className="flex items-center gap-2 flex-wrap">
           {runState !== "running" ? (
             <button
               onClick={onStart}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
+              disabled={!task.plannedHours}
+              title={!task.plannedHours ? "Planned Hours not set — PM must configure this task first." : undefined}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors",
+                task.plannedHours
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
+              )}
             >
               <Play className="w-3.5 h-3.5" />
               Bat dau
@@ -489,6 +504,7 @@ function MyTaskCard({
             <CheckCircle className="w-3.5 h-3.5" />
             Finish &amp; Review
           </button>
+        </div>
         </div>
       )}
     </div>
