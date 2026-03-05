@@ -151,12 +151,13 @@ export function DashboardClient() {
   }
 
   // ─── Navigation state ────────────────────────────────────────────────────────
+  const focusedProject  = focusedProjectId ? projects.find((p) => p.id === focusedProjectId) : null;
+  const focusedTactical = focusedProjectId ? tacticalData[focusedProjectId] : null;
+
   const isTacticalMode = role === "PM" && !!focusedProjectId && !!focusedProject && !!focusedTactical;
   const isEngineerMode = role === "Engineer";
 
-  const focusedProject  = focusedProjectId ? projects.find((p) => p.id === focusedProjectId) : null;
-  const focusedTactical = focusedProjectId ? tacticalData[focusedProjectId] : null;
-  const sidebarMode     = isEngineerMode ? "engineer" : isTacticalMode ? "pm" : "strategic";
+  const sidebarMode = isEngineerMode ? "engineer" : isTacticalMode ? "pm" : "strategic";
 
   // Dynamic breadcrumbs
   const breadcrumbs: BreadcrumbItem[] =
