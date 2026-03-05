@@ -327,8 +327,172 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-// ─── Derived KPIs ────────────────────────────────────────────────────────────
+// ─── Quality & Technical Health Data ─────────────────────────────────────────
 
+export interface QualityTrendPoint {
+  week: string;
+  bugDensity: number;      // bugs per KLOC
+  testCoverage: number;    // 0–100 %
+  technicalDebt: number;   // story points
+}
+
+export interface ProjectQuality {
+  projectId: string;
+  projectName: string;
+  department: string;
+  bugDensity: number;
+  testCoverage: number;
+  technicalDebt: number;   // story points
+  openCriticalBugs: number;
+}
+
+export const QUALITY_TREND: QualityTrendPoint[] = [
+  { week: "W48",  bugDensity: 3.8, testCoverage: 61, technicalDebt: 142 },
+  { week: "W49",  bugDensity: 3.5, testCoverage: 63, technicalDebt: 138 },
+  { week: "W50",  bugDensity: 3.9, testCoverage: 62, technicalDebt: 145 },
+  { week: "W51",  bugDensity: 4.2, testCoverage: 60, technicalDebt: 151 },
+  { week: "W52",  bugDensity: 3.6, testCoverage: 64, technicalDebt: 139 },
+  { week: "W01",  bugDensity: 3.1, testCoverage: 67, technicalDebt: 128 },
+  { week: "W02",  bugDensity: 2.8, testCoverage: 69, technicalDebt: 122 },
+  { week: "W03",  bugDensity: 2.5, testCoverage: 71, technicalDebt: 115 },
+  { week: "W04",  bugDensity: 2.9, testCoverage: 70, technicalDebt: 120 },
+  { week: "W05",  bugDensity: 2.6, testCoverage: 73, technicalDebt: 112 },
+];
+
+export const PROJECT_QUALITY: ProjectQuality[] = [
+  { projectId: "PRJ-001", projectName: "NavComm FPGA Core",      department: "FPGA",     bugDensity: 2.1, testCoverage: 78, technicalDebt: 35,  openCriticalBugs: 2 },
+  { projectId: "PRJ-002", projectName: "Sentinel Gateway v3",    department: "Software", bugDensity: 4.8, testCoverage: 54, technicalDebt: 89,  openCriticalBugs: 6 },
+  { projectId: "PRJ-003", projectName: "Sigma Hardware Backplane",department: "Hardware", bugDensity: 5.3, testCoverage: 41, technicalDebt: 112, openCriticalBugs: 8 },
+  { projectId: "PRJ-004", projectName: "ProtoLink Middleware",    department: "Software", bugDensity: 1.8, testCoverage: 84, technicalDebt: 28,  openCriticalBugs: 1 },
+  { projectId: "PRJ-005", projectName: "TerraEdge IoT Platform",  department: "Mixed",    bugDensity: 3.5, testCoverage: 61, technicalDebt: 67,  openCriticalBugs: 4 },
+  { projectId: "PRJ-008", projectName: "Vortex Firmware Suite",   department: "Software", bugDensity: 6.1, testCoverage: 38, technicalDebt: 134, openCriticalBugs: 11 },
+];
+
+// ─── Team Velocity Data ───────────────────────────────────────────────────────
+
+export interface VelocityPoint {
+  sprint: string;
+  fpga: number;
+  software: number;
+  hardware: number;
+}
+
+export const TEAM_VELOCITY: VelocityPoint[] = [
+  { sprint: "S-18", fpga: 32, software: 44, hardware: 28 },
+  { sprint: "S-19", fpga: 35, software: 40, hardware: 31 },
+  { sprint: "S-20", fpga: 30, software: 48, hardware: 26 },
+  { sprint: "S-21", fpga: 38, software: 42, hardware: 33 },
+  { sprint: "S-22", fpga: 36, software: 50, hardware: 30 },
+  { sprint: "S-23", fpga: 40, software: 46, hardware: 35 },
+  { sprint: "S-24", fpga: 37, software: 52, hardware: 32 },
+];
+
+// ─── Risk Management Data ─────────────────────────────────────────────────────
+
+export type RiskSeverity = "critical" | "high" | "medium";
+export type RiskCategory = "security" | "hardware" | "schedule" | "resource";
+
+export interface RiskItem {
+  id: string;
+  projectId: string;
+  projectName: string;
+  category: RiskCategory;
+  severity: RiskSeverity;
+  title: string;
+  description: string;
+  detectedDate: string;
+  mitigationOwner: string;
+  status: "open" | "mitigating" | "resolved";
+}
+
+export const RISK_REGISTER: RiskItem[] = [
+  {
+    id: "R-001",
+    projectId: "PRJ-008",
+    projectName: "Vortex Firmware Suite",
+    category: "security",
+    severity: "critical",
+    title: "Bootloader Secure Boot Bypass Vulnerability",
+    description: "CVE-equivalent: unsigned firmware can be loaded via JTAG without PIN protection. Affects all deployed units.",
+    detectedDate: "2026-02-18",
+    mitigationOwner: "H. Patel",
+    status: "open",
+  },
+  {
+    id: "R-002",
+    projectId: "PRJ-003",
+    projectName: "Sigma Hardware Backplane",
+    category: "hardware",
+    severity: "critical",
+    title: "Critical Component Shortage: STM32H755 MCU",
+    description: "Primary MCU on 16-week lead time. Current stock covers only 3 prototypes. Production will be blocked without alt sourcing.",
+    detectedDate: "2026-02-25",
+    mitigationOwner: "C. Davies",
+    status: "mitigating",
+  },
+  {
+    id: "R-003",
+    projectId: "PRJ-002",
+    projectName: "Sentinel Gateway v3",
+    category: "schedule",
+    severity: "high",
+    title: "API Auth Module on Critical Path — 8 Days Overdue",
+    description: "No completed auth module means test phase cannot start. 3 dependent tasks blocked. SPI degrading to 0.78.",
+    detectedDate: "2026-02-28",
+    mitigationOwner: "L. Tan",
+    status: "open",
+  },
+  {
+    id: "R-004",
+    projectId: "PRJ-003",
+    projectName: "Sigma Hardware Backplane",
+    category: "schedule",
+    severity: "high",
+    title: "PCB Layout 12 Days Overdue — EMC Pre-Compliance Blocked",
+    description: "PCB sign-off delay cascades into EMC test. Hardware team at 95% utilisation with no slack capacity.",
+    detectedDate: "2026-02-20",
+    mitigationOwner: "P. Newton",
+    status: "open",
+  },
+  {
+    id: "R-005",
+    projectId: "PRJ-005",
+    projectName: "TerraEdge IoT Platform",
+    category: "resource",
+    severity: "high",
+    title: "FPGA Team Overallocation — 90% Load on Single Project",
+    description: "NavComm absorbing 90% of FPGA team bandwidth. Any slip cascades directly to TerraEdge IoT milestones.",
+    detectedDate: "2026-03-01",
+    mitigationOwner: "E. Müller",
+    status: "open",
+  },
+  {
+    id: "R-006",
+    projectId: "PRJ-001",
+    projectName: "NavComm FPGA Core",
+    category: "schedule",
+    severity: "medium",
+    title: "Timing Closure Delay Risk",
+    description: "1 unresolved critical path violation in FPGA synthesis. If not resolved by end of sprint, Test phase entry delayed by ≥2 weeks.",
+    detectedDate: "2026-03-03",
+    mitigationOwner: "J. Hart",
+    status: "mitigating",
+  },
+  {
+    id: "R-007",
+    projectId: "PRJ-008",
+    projectName: "Vortex Firmware Suite",
+    category: "security",
+    severity: "high",
+    title: "18 Open MISRA-C Violations in Safety-Critical Module",
+    description: "Static analysis found 18 MISRA-C violations in the motor control module. Functional Safety review blocked.",
+    detectedDate: "2026-03-02",
+    mitigationOwner: "V. Singh",
+    status: "mitigating",
+  },
+];
+
+// ─── Derived KPIs ────────────────────────────────────────────────────────────
 export function getPortfolioHealth(projects: Project[]): number {
   const active = projects.filter((p) => !p.closed);
   if (active.length === 0) return 0;

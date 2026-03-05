@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import {
   LayoutDashboard,
-  Map,
-  BarChart3,
+  ShieldCheck,
+  Users,
+  AlertTriangle,
   Archive,
   ChevronRight,
   Network,
   CalendarRange,
   KanbanSquare,
   Clock,
-  Users,
   ClipboardList,
   FileText,
   BookOpen,
@@ -19,22 +18,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STRATEGIC_NAV = [
-  { icon: LayoutDashboard, label: "Portfolio",          active: true },
-  { icon: Map,             label: "Resource Map" },
-  { icon: BarChart3,       label: "Strategic Reports" },
-  { icon: Archive,         label: "Project Archives" },
+export type StrategicView = "portfolio" | "quality" | "resource" | "risk" | "archive";
+
+const STRATEGIC_NAV: { icon: typeof LayoutDashboard; label: string; view: StrategicView }[] = [
+  { icon: LayoutDashboard, label: "Portfolio",            view: "portfolio" },
+  { icon: ShieldCheck,     label: "Engineering Quality",  view: "quality"   },
+  { icon: Users,           label: "Resource Planning",    view: "resource"  },
+  { icon: AlertTriangle,   label: "Risk Management",      view: "risk"      },
+  { icon: Archive,         label: "Project Archives",     view: "archive"   },
 ];
 
 const PM_NAV = [
-  { icon: CalendarRange,  label: "Phase Planning",      active: true },
+  { icon: CalendarRange,  label: "Phase Planning" },
   { icon: KanbanSquare,   label: "Task Kanban" },
   { icon: Users,          label: "Resource Allocation" },
   { icon: Clock,          label: "Timesheet Approval" },
 ];
 
 const ENGINEER_NAV = [
-  { icon: LayoutDashboard, label: "My Dashboard",      active: true },
+  { icon: LayoutDashboard, label: "My Dashboard" },
   { icon: ClipboardList,   label: "Cong viec cua toi" },
   { icon: Clock,           label: "Bang cham cong" },
   { icon: FileText,        label: "Tai lieu" },
@@ -46,13 +48,15 @@ export function Sidebar({
   collapsed,
   setCollapsed,
   mode = "strategic",
+  activeStrategicView,
+  onNavigate,
 }: {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
   mode?: "strategic" | "pm" | "engineer";
+  activeStrategicView?: StrategicView;
+  onNavigate?: (view: StrategicView) => void;
 }) {
-  const navItems =
-    mode === "pm" ? PM_NAV : mode === "engineer" ? ENGINEER_NAV : STRATEGIC_NAV;
   const label =
     mode === "pm" ? "PM Workspace" : mode === "engineer" ? "My Portal" : "Lancsnetworks";
   const levelLabel =
@@ -88,21 +92,60 @@ export function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 py-1 space-y-0.5 px-2">
-        {navItems.map(({ icon: Icon, label: navLabel, active }) => (
-          <button
-            key={navLabel}
-            className={cn(
-              "flex items-center gap-3 w-full rounded-md px-2 py-2 text-sm font-medium transition-colors",
-              active
-                ? "bg-sidebar-accent text-white"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
-            )}
-            title={collapsed ? navLabel : undefined}
-          >
-            <Icon className="w-4 h-4 shrink-0" />
-            {!collapsed && <span className="truncate">{navLabel}</span>}
-          </button>
-        ))}
+        {mode === "strategic" ? (
+          STRATEGIC_NAV.map(({ icon: Icon, label: navLabel, view }) => {
+            const isActive = activeStrategicView === view;
+            return (
+              <button
+                key={view}
+                onClick={() => onNavigate?.(view)}
+                className={cn(
+                  "flex items-center gap-3 w-full rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-sidebar-accent text-white"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
+                )}
+                title={collapsed ? navLabel : undefined}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                {!collapsed && <span className="truncate">{navLabel}</span>}
+              </button>
+            );
+          })
+        ) : mode === "pm" ? (
+          PM_NAV.map(({ icon: Icon, label: navLabel }, idx) => (
+            <button
+              key={navLabel}
+              className={cn(
+                "flex items-center gap-3 w-full rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                idx === 0
+                  ? "bg-sidebar-accent text-white"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
+              )}
+              title={collapsed ? navLabel : undefined}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="truncate">{navLabel}</span>}
+            </button>
+          ))
+        ) : (
+          ENGINEER_NAV.map(({ icon: Icon, label: navLabel }, idx) => (
+            <button
+              key={navLabel}
+              className={cn(
+                "flex items-center gap-3 w-full rounded-md px-2 py-2 text-sm font-medium transition-colors",
+                idx === 0
+                  ? "bg-sidebar-accent text-white"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
+              )}
+              title={collapsed ? navLabel : undefined}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="truncate">{navLabel}</span>}
+            </button>
+          ))
+        )}
       </nav>
 
       {/* Collapse toggle */}
@@ -123,4 +166,3 @@ export function Sidebar({
     </aside>
   );
 }
-
