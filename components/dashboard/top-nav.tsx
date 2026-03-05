@@ -13,12 +13,19 @@ export type ViewRole = "CTO" | "PM" | "Engineer";
 
 const ROLES: ViewRole[] = ["CTO", "PM", "Engineer"];
 
+export interface BreadcrumbItem {
+  label: string;
+  onClick?: () => void;
+}
+
 export function TopNav({
   role,
   setRole,
+  breadcrumbs,
 }: {
   role: ViewRole;
   setRole: (r: ViewRole) => void;
+  breadcrumbs?: BreadcrumbItem[];
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -60,11 +67,29 @@ export function TopNav({
           className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground"
           aria-label="Breadcrumb"
         >
-          <span className="hover:text-foreground cursor-pointer transition-colors">
-            Dashboard
-          </span>
-          <span>/</span>
-          <span className="text-foreground font-medium">Portfolio Insights</span>
+          {breadcrumbs && breadcrumbs.length > 0 ? (
+            breadcrumbs.map((crumb, i) => (
+              <span key={i} className="flex items-center gap-1">
+                {i > 0 && <span>/</span>}
+                {crumb.onClick ? (
+                  <button
+                    onClick={crumb.onClick}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    {crumb.label}
+                  </button>
+                ) : (
+                  <span className="text-foreground font-medium">{crumb.label}</span>
+                )}
+              </span>
+            ))
+          ) : (
+            <>
+              <span className="hover:text-foreground cursor-pointer transition-colors">Dashboard</span>
+              <span>/</span>
+              <span className="text-foreground font-medium">Portfolio Insights</span>
+            </>
+          )}
         </nav>
       </div>
 

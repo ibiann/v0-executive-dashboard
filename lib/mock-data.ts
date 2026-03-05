@@ -3,6 +3,20 @@
 export type RAGStatus = "green" | "amber" | "red";
 export type Phase = "Survey" | "R&D" | "Test" | "Release";
 
+export interface OverdueTask {
+  id: string;
+  title: string;
+  assignee: string;
+  dueSince: string; // days overdue as string, e.g. "3 days"
+  severity: "high" | "medium" | "low";
+}
+
+export interface HoursData {
+  phase: Phase;
+  planned: number;
+  actual: number;
+}
+
 export interface PhaseProgress {
   phase: Phase;
   progress: number; // 0–100
@@ -15,13 +29,15 @@ export interface Project {
   pm: string;
   ragStatus: RAGStatus;
   phases: PhaseProgress[];
-  overallProgress: number; // derived from phases
-  plannedProgress: number; // what should be done by today
+  overallProgress: number;
+  plannedProgress: number;
   department: "FPGA" | "Software" | "Hardware" | "Mixed";
-  resourceEfficiency: number; // 0–100 %
+  resourceEfficiency: number;
   startDate: string;
   endDate: string;
   closed: boolean;
+  hoursData: HoursData[];
+  overdueTasks: OverdueTask[];
 }
 
 export const PROJECTS: Project[] = [
@@ -43,6 +59,16 @@ export const PROJECTS: Project[] = [
     startDate: "2025-01-10",
     endDate: "2026-06-30",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 120, actual: 115 },
+      { phase: "R&D", planned: 400, actual: 380 },
+      { phase: "Test", planned: 240, actual: 190 },
+      { phase: "Release", planned: 80, actual: 20 },
+    ],
+    overdueTasks: [
+      { id: "T-012", title: "FPGA synthesis timing closure", assignee: "J. Hart", dueSince: "5 days", severity: "high" },
+      { id: "T-019", title: "Signal integrity report", assignee: "M. Russo", dueSince: "2 days", severity: "medium" },
+    ],
   },
   {
     id: "PRJ-002",
@@ -62,6 +88,17 @@ export const PROJECTS: Project[] = [
     startDate: "2025-03-01",
     endDate: "2026-04-15",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 100, actual: 98 },
+      { phase: "R&D", planned: 360, actual: 310 },
+      { phase: "Test", planned: 200, actual: 95 },
+      { phase: "Release", planned: 100, actual: 0 },
+    ],
+    overdueTasks: [
+      { id: "T-031", title: "API gateway auth module review", assignee: "L. Tan", dueSince: "8 days", severity: "high" },
+      { id: "T-038", title: "Load test environment setup", assignee: "S. Brooks", dueSince: "4 days", severity: "high" },
+      { id: "T-041", title: "Documentation update", assignee: "B. Chen", dueSince: "1 day", severity: "low" },
+    ],
   },
   {
     id: "PRJ-003",
@@ -81,6 +118,18 @@ export const PROJECTS: Project[] = [
     startDate: "2024-11-01",
     endDate: "2026-03-01",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 160, actual: 158 },
+      { phase: "R&D", planned: 500, actual: 390 },
+      { phase: "Test", planned: 280, actual: 70 },
+      { phase: "Release", planned: 120, actual: 0 },
+    ],
+    overdueTasks: [
+      { id: "T-055", title: "PCB layout sign-off", assignee: "C. Davies", dueSince: "12 days", severity: "high" },
+      { id: "T-062", title: "Thermal analysis review", assignee: "P. Newton", dueSince: "9 days", severity: "high" },
+      { id: "T-067", title: "BOM finalisation", assignee: "A. Obi", dueSince: "6 days", severity: "medium" },
+      { id: "T-071", title: "Supplier lead time confirmation", assignee: "C. Davies", dueSince: "3 days", severity: "medium" },
+    ],
   },
   {
     id: "PRJ-004",
@@ -100,6 +149,15 @@ export const PROJECTS: Project[] = [
     startDate: "2025-02-14",
     endDate: "2026-07-31",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 80, actual: 78 },
+      { phase: "R&D", planned: 320, actual: 325 },
+      { phase: "Test", planned: 260, actual: 240 },
+      { phase: "Release", planned: 140, actual: 85 },
+    ],
+    overdueTasks: [
+      { id: "T-088", title: "Release candidate smoke test", assignee: "D. Osei", dueSince: "1 day", severity: "low" },
+    ],
   },
   {
     id: "PRJ-005",
@@ -119,6 +177,16 @@ export const PROJECTS: Project[] = [
     startDate: "2025-04-01",
     endDate: "2026-09-30",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 140, actual: 138 },
+      { phase: "R&D", planned: 440, actual: 390 },
+      { phase: "Test", planned: 300, actual: 175 },
+      { phase: "Release", planned: 120, actual: 10 },
+    ],
+    overdueTasks: [
+      { id: "T-101", title: "Device driver regression suite", assignee: "E. Müller", dueSince: "7 days", severity: "high" },
+      { id: "T-108", title: "Cloud connector integration test", assignee: "R. Kaur", dueSince: "4 days", severity: "medium" },
+    ],
   },
   {
     id: "PRJ-006",
@@ -138,6 +206,13 @@ export const PROJECTS: Project[] = [
     startDate: "2024-06-01",
     endDate: "2025-12-31",
     closed: true,
+    hoursData: [
+      { phase: "Survey", planned: 100, actual: 97 },
+      { phase: "R&D", planned: 380, actual: 362 },
+      { phase: "Test", planned: 220, actual: 210 },
+      { phase: "Release", planned: 100, actual: 98 },
+    ],
+    overdueTasks: [],
   },
   {
     id: "PRJ-007",
@@ -157,6 +232,13 @@ export const PROJECTS: Project[] = [
     startDate: "2024-03-15",
     endDate: "2025-10-31",
     closed: true,
+    hoursData: [
+      { phase: "Survey", planned: 120, actual: 118 },
+      { phase: "R&D", planned: 460, actual: 445 },
+      { phase: "Test", planned: 260, actual: 252 },
+      { phase: "Release", planned: 80, actual: 78 },
+    ],
+    overdueTasks: [],
   },
   {
     id: "PRJ-008",
@@ -176,6 +258,19 @@ export const PROJECTS: Project[] = [
     startDate: "2024-10-01",
     endDate: "2026-02-28",
     closed: false,
+    hoursData: [
+      { phase: "Survey", planned: 90, actual: 88 },
+      { phase: "R&D", planned: 420, actual: 340 },
+      { phase: "Test", planned: 280, actual: 105 },
+      { phase: "Release", planned: 110, actual: 0 },
+    ],
+    overdueTasks: [
+      { id: "T-142", title: "Bootloader security patch", assignee: "H. Patel", dueSince: "14 days", severity: "high" },
+      { id: "T-148", title: "Memory map validation", assignee: "O. Mensah", dueSince: "10 days", severity: "high" },
+      { id: "T-153", title: "Code coverage report", assignee: "H. Patel", dueSince: "6 days", severity: "medium" },
+      { id: "T-157", title: "Static analysis remediation", assignee: "V. Singh", dueSince: "4 days", severity: "medium" },
+      { id: "T-162", title: "Regression baseline update", assignee: "O. Mensah", dueSince: "2 days", severity: "low" },
+    ],
   },
 ];
 

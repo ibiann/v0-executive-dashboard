@@ -2,6 +2,7 @@
 
 import { Project, RAGStatus } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 
 const RAG_CONFIG: Record<RAGStatus, { color: string; label: string }> = {
   green: { color: "bg-green-500", label: "On Track" },
@@ -39,9 +40,10 @@ function PhaseLegend({ phases }: { phases: Project["phases"] }) {
 
 interface PortfolioTableProps {
   projects: Project[];
+  onProjectClick: (project: Project) => void;
 }
 
-export function PortfolioTable({ projects }: PortfolioTableProps) {
+export function PortfolioTable({ projects, onProjectClick }: PortfolioTableProps) {
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -71,15 +73,21 @@ export function PortfolioTable({ projects }: PortfolioTableProps) {
               return (
                 <tr
                   key={project.id}
+                  onClick={() => onProjectClick(project)}
                   className={cn(
-                    "border-b border-border/50 hover:bg-muted/30 transition-colors",
+                    "border-b border-border/50 hover:bg-primary/5 cursor-pointer transition-colors group",
                     i % 2 === 0 ? "bg-card" : "bg-muted/10"
                   )}
                 >
                   {/* Project / PM */}
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground text-sm leading-tight">{project.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{project.pm}</p>
+                    <div className="flex items-center gap-1.5">
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground text-sm leading-tight group-hover:text-primary transition-colors">{project.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{project.pm}</p>
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 ml-auto" />
+                    </div>
                   </td>
 
                   {/* RAG */}
