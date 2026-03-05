@@ -9,6 +9,7 @@ import { ResourceHeatmap } from "@/components/dashboard/resource-heatmap";
 import { ProjectClosure } from "@/components/dashboard/project-closure";
 import { ProjectInsightsDrawer } from "@/components/dashboard/project-insights-drawer";
 import { TacticalView } from "@/components/dashboard/tactical-view";
+import { OperationalPortal } from "@/components/dashboard/operational-portal";
 import {
   PROJECTS,
   TACTICAL_DATA,
@@ -63,10 +64,6 @@ export function DashboardClient() {
 
   // ─── Tactical-level mutations ────────────────────────────────────────────
 
-  /**
-   * Approving a timesheet entry re-computes the project's overallProgress
-   * from approved hours, so the Strategic View KPIs update immediately.
-   */
   function handleTimesheetApprove(projectId: string, entryId: string) {
     setTacticalData((prev) => {
       const td = prev[projectId];
@@ -79,7 +76,6 @@ export function DashboardClient() {
         ),
       };
 
-      // Recompute project progress from approved timesheet log entries
       const approved = updated.timesheets.filter((ts) => ts.approved);
       const totalApprovedHours = approved.reduce((s, ts) => s + ts.loggedHours, 0);
       const totalPlannedHours = projects
@@ -118,25 +114,26 @@ export function DashboardClient() {
 
   // ─── Navigation state ────────────────────────────────────────────────────
   const breadcrumbs: BreadcrumbItem[] =
-    role === "PM" && focusedProjectId
-      ? [
-          {
-            label: "Portfolio",
-            onClick: () => {
-              setRole("CTO");
-              setFocusedProjectId(null);
+    role === "Engineer"
+      ? [{ label: "Home" }, { label: "My Dashboard" }]
+      : role === "PM" && focusedProjectId
+        ? [
+            {
+              label: "Portfolio",
+              onClick: () => {
+                setRole("CTO");
+                setFocusedProjectId(null);
+              },
             },
-          },
-          {
-            label:
-              projects.find((p) => p.id === focusedProjectId)?.name ?? "Project",
-          },
-          { label: "Tactical View (PM)" },
-        ]
-      : [
-          { label: "Dashboard" },
-          { label: "Portfolio Insights" },
-        ];
+            {
+              label: projects.find((p) => p.id === focusedProjectId)?.name ?? "Project",
+            },
+            { label: "Tactical View (PM)" },
+          ]
+        : [
+            { label: "Dashboard" },
+            { label: "Portfolio Insights" },
+          ];
 
   const displayedProjects =
     role === "PM" && focusedProjectId
@@ -149,9 +146,9 @@ export function DashboardClient() {
     focusedProjectId ? tacticalData[focusedProjectId] : null;
 
   const isTacticalMode = role === "PM" && !!focusedProjectId && !!focusedProject && !!focusedTactical;
+  const isEngineerMode = role === "Engineer";
 
-  // ─── Sidebar active-nav state ────────────────────────────────────────────
-  const sidebarMode = isTacticalMode ? "pm" : "strategic";
+  const sidebarMode = isEngineerMode ? "engineer" : isTacticalMode ? "pm" : "strategic";
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -161,96 +158,104 @@ export function DashboardClient() {
         <TopNav role={role} setRole={setRole} breadcrumbs={breadcrumbs} />
 
         <main className="flex-1 px-4 py-5 md:px-6 space-y-6">
-          {/* Page heading */}
-          <div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">
-              {isTacticalMode
-                ? `Tactical Management — ${focusedProject!.name}`
-                : "Portfolio Insights"}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {isTacticalMode
-                ? `PM: ${focusedProject!.pm} · Steps 2–6: Phase Plan, Kanban, Resources, Timesheets`
-                : `Read-only view derived from approved timesheets · ${role} perspective`}
-            </p>
-          </div>
 
-          {/* ── Tactical View (Level 2) ── */}
-          {isTacticalMode ? (
-            <TacticalView
-              project={focusedProject!}
-              tactical={focusedTactical!}
-              role={role}
-              onTimesheetApprove={handleTimesheetApprove}
-              onPhaseSave={handlePhaseSave}
-              onTasksChange={handleTasksChange}
-            />
+          {/* ── Level 3: Engineer Operational Portal ── */}
+          {isEngineerMode ? (
+            <OperationalPortal />
           ) : (
             <>
-              {/* ── Strategic View (Level 1) ── */}
-              <section
-                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-                aria-label="Key Performance Indicators"
-              >
-                <KpiCard
-                  title="Portfolio Health"
-                  value={`${portfolioHealth}%`}
-                  subtitle="Progress vs. Time Spent"
-                  trend={portfolioHealth >= 90 ? "up" : portfolioHealth >= 75 ? "neutral" : "down"}
-                  trendLabel={portfolioHealth >= 90 ? "Healthy" : portfolioHealth >= 75 ? "Moderate" : "Needs attention"}
-                  icon={<Activity className="w-4 h-4" />}
-                  highlight
-                />
-                <KpiCard
-                  title="Total Active Projects"
-                  value={activeProjects.length}
-                  subtitle={`${greenCount} on track · ${amberCount} at risk · ${redCount} delayed`}
-                  trend="neutral"
-                  trendLabel={`${closedProjects.length} closed`}
-                  icon={<Layers className="w-4 h-4" />}
-                />
-                <KpiCard
-                  title="Global SPI"
-                  value={activeSPI.toFixed(2)}
-                  subtitle="Schedule Performance Index"
-                  trend={activeSPI >= 1 ? "up" : activeSPI >= 0.85 ? "neutral" : "down"}
-                  trendLabel={
-                    activeSPI >= 1
-                      ? "Ahead of schedule"
-                      : activeSPI >= 0.85
-                      ? "Slightly behind"
-                      : "Behind schedule"
-                  }
-                  icon={<Gauge className="w-4 h-4" />}
-                />
-                <KpiCard
-                  title="Resource Efficiency"
-                  value={`${resourceEff}%`}
-                  subtitle="Aggregated from engineer log works"
-                  trend={resourceEff >= 85 ? "up" : resourceEff >= 70 ? "neutral" : "down"}
-                  trendLabel={resourceEff >= 85 ? "Efficient" : "Review needed"}
-                  icon={<Users className="w-4 h-4" />}
-                />
-              </section>
+              {/* Page heading */}
+              <div>
+                <h1 className="text-lg font-bold text-foreground tracking-tight">
+                  {isTacticalMode
+                    ? `Tactical Management — ${focusedProject!.name}`
+                    : "Portfolio Insights"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isTacticalMode
+                    ? `PM: ${focusedProject!.pm} · Steps 2–6: Phase Plan, Kanban, Resources, Timesheets`
+                    : `Read-only view derived from approved timesheets · ${role} perspective`}
+                </p>
+              </div>
 
-              <PortfolioTable
-                projects={displayedProjects}
-                onProjectClick={(p) => setSelectedProject(p)}
-              />
+              {/* ── Level 2: Tactical View ── */}
+              {isTacticalMode ? (
+                <TacticalView
+                  project={focusedProject!}
+                  tactical={focusedTactical!}
+                  role={role}
+                  onTimesheetApprove={handleTimesheetApprove}
+                  onPhaseSave={handlePhaseSave}
+                  onTasksChange={handleTasksChange}
+                />
+              ) : (
+                <>
+                  {/* ── Level 1: Strategic View ── */}
+                  <section
+                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+                    aria-label="Key Performance Indicators"
+                  >
+                    <KpiCard
+                      title="Portfolio Health"
+                      value={`${portfolioHealth}%`}
+                      subtitle="Progress vs. Time Spent"
+                      trend={portfolioHealth >= 90 ? "up" : portfolioHealth >= 75 ? "neutral" : "down"}
+                      trendLabel={portfolioHealth >= 90 ? "Healthy" : portfolioHealth >= 75 ? "Moderate" : "Needs attention"}
+                      icon={<Activity className="w-4 h-4" />}
+                      highlight
+                    />
+                    <KpiCard
+                      title="Total Active Projects"
+                      value={activeProjects.length}
+                      subtitle={`${greenCount} on track · ${amberCount} at risk · ${redCount} delayed`}
+                      trend="neutral"
+                      trendLabel={`${closedProjects.length} closed`}
+                      icon={<Layers className="w-4 h-4" />}
+                    />
+                    <KpiCard
+                      title="Global SPI"
+                      value={activeSPI.toFixed(2)}
+                      subtitle="Schedule Performance Index"
+                      trend={activeSPI >= 1 ? "up" : activeSPI >= 0.85 ? "neutral" : "down"}
+                      trendLabel={
+                        activeSPI >= 1
+                          ? "Ahead of schedule"
+                          : activeSPI >= 0.85
+                          ? "Slightly behind"
+                          : "Behind schedule"
+                      }
+                      icon={<Gauge className="w-4 h-4" />}
+                    />
+                    <KpiCard
+                      title="Resource Efficiency"
+                      value={`${resourceEff}%`}
+                      subtitle="Aggregated from engineer log works"
+                      trend={resourceEff >= 85 ? "up" : resourceEff >= 70 ? "neutral" : "down"}
+                      trendLabel={resourceEff >= 85 ? "Efficient" : "Review needed"}
+                      icon={<Users className="w-4 h-4" />}
+                    />
+                  </section>
 
-              <ResourceHeatmap />
+                  <PortfolioTable
+                    projects={displayedProjects}
+                    onProjectClick={(p) => setSelectedProject(p)}
+                  />
 
-              <ProjectClosure
-                projects={closedProjects}
-                onProjectClick={(p) => setSelectedProject(p)}
-              />
+                  <ResourceHeatmap />
+
+                  <ProjectClosure
+                    projects={closedProjects}
+                    onProjectClick={(p) => setSelectedProject(p)}
+                  />
+                </>
+              )}
             </>
           )}
         </main>
       </div>
 
       {/* Project Insights Drawer (strategic only) */}
-      {!isTacticalMode && selectedProject && (
+      {!isTacticalMode && !isEngineerMode && selectedProject && (
         <ProjectInsightsDrawer
           project={selectedProject}
           onClose={() => setSelectedProject(null)}

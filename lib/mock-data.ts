@@ -355,6 +355,79 @@ export function getResourceEfficiency(projects: Project[]): number {
   );
 }
 
+// ─── Engineer Level 3 Types ───────────────────────────────────────────────────
+
+export interface EngNotification {
+  id: string;
+  type: "overdue" | "rejected" | "assigned";
+  title: string;
+  body: string;
+  timestamp: string; // ISO date string
+  read: boolean;
+}
+
+export interface LogWorkEntry {
+  id: string;
+  taskId: string;
+  date: string;
+  loggedHours: number;
+  description: string;
+  progressPercent: number;
+}
+
+export interface EngineerProfile {
+  memberId: string;
+  name: string;
+  initials: string;
+  role: string;
+  department: string;
+  projectId: string;
+  projectName: string;
+  notifications: EngNotification[];
+  logWorkHistory: LogWorkEntry[];
+}
+
+// Pre-seeded engineer profile: James Hart on PRJ-001
+export const ENGINEER_PROFILE: EngineerProfile = {
+  memberId: "M-01",
+  name: "James Hart",
+  initials: "JH",
+  role: "FPGA Engineer",
+  department: "FPGA",
+  projectId: "PRJ-001",
+  projectName: "NavComm FPGA Core",
+  notifications: [
+    {
+      id: "N-001",
+      type: "overdue",
+      title: "Task Overdue",
+      body: "FPGA synthesis timing closure is 5 days overdue.",
+      timestamp: "2026-03-01T09:00:00Z",
+      read: false,
+    },
+    {
+      id: "N-002",
+      type: "rejected",
+      title: "Timesheet Rejected",
+      body: "PM rejected TS-001: 'Please add more detail on the timing violations.'",
+      timestamp: "2026-03-02T14:30:00Z",
+      read: false,
+    },
+    {
+      id: "N-003",
+      type: "assigned",
+      title: "New Task Assigned",
+      body: "You have been assigned: 'Release package preparation' in PRJ-001.",
+      timestamp: "2026-03-03T10:15:00Z",
+      read: true,
+    },
+  ],
+  logWorkHistory: [
+    { id: "LW-001", taskId: "T-003", date: "2026-03-01", loggedHours: 6, description: "Completed timing analysis pass 1, 3 violations remain", progressPercent: 45 },
+    { id: "LW-002", taskId: "T-003", date: "2026-03-04", loggedHours: 8, description: "Resolved 2 of 3 critical path violations", progressPercent: 65 },
+  ],
+};
+
 // ─── Resource Heatmap Data ────────────────────────────────────────────────────
 
 export interface HeatmapCell {

@@ -12,6 +12,10 @@ import {
   KanbanSquare,
   Clock,
   Users,
+  ClipboardList,
+  FileText,
+  BookOpen,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +33,15 @@ const PM_NAV = [
   { icon: Clock,          label: "Timesheet Approval" },
 ];
 
+const ENGINEER_NAV = [
+  { icon: LayoutDashboard, label: "My Dashboard",      active: true },
+  { icon: ClipboardList,   label: "Cong viec cua toi" },
+  { icon: Clock,           label: "Bang cham cong" },
+  { icon: FileText,        label: "Tai lieu" },
+  { icon: BookOpen,        label: "Kien thuc" },
+  { icon: MapPin,          label: "Dia chi" },
+];
+
 export function Sidebar({
   collapsed,
   setCollapsed,
@@ -36,10 +49,14 @@ export function Sidebar({
 }: {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
-  mode?: "strategic" | "pm";
+  mode?: "strategic" | "pm" | "engineer";
 }) {
-  const navItems = mode === "pm" ? PM_NAV : STRATEGIC_NAV;
-  const label = mode === "pm" ? "PM Workspace" : "Lancsnetworks";
+  const navItems =
+    mode === "pm" ? PM_NAV : mode === "engineer" ? ENGINEER_NAV : STRATEGIC_NAV;
+  const label =
+    mode === "pm" ? "PM Workspace" : mode === "engineer" ? "My Portal" : "Lancsnetworks";
+  const levelLabel =
+    mode === "pm" ? "Level 2 — PM" : mode === "engineer" ? "Level 3 — Engineer" : "Level 1 — Strategic";
 
   return (
     <aside
@@ -64,7 +81,7 @@ export function Sidebar({
       {!collapsed && (
         <div className="px-4 pt-3 pb-1">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            {mode === "pm" ? "Level 2 — PM" : "Level 1 — Strategic"}
+            {levelLabel}
           </span>
         </div>
       )}
