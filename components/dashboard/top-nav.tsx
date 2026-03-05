@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ChevronDown, Bell, User } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,30 +20,40 @@ export function TopNav({
   role: ViewRole;
   setRole: (r: ViewRole) => void;
 }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <header className="flex items-center justify-between gap-4 bg-card border-b border-border px-4 py-2.5 sticky top-0 z-30">
       {/* Left: View As + Breadcrumbs */}
       <div className="flex items-center gap-4 min-w-0">
-        {/* View As dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-primary/20 transition-colors shrink-0">
-              <span>View As: {role}</span>
-              <ChevronDown className="w-3.5 h-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-36">
-            {ROLES.map((r) => (
-              <DropdownMenuItem
-                key={r}
-                onClick={() => setRole(r)}
-                className="cursor-pointer"
-              >
-                {r}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* View As dropdown — only rendered client-side to avoid Radix ID mismatch */}
+        {mounted ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-primary/20 transition-colors shrink-0">
+                <span>View As: {role}</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-36">
+              {ROLES.map((r) => (
+                <DropdownMenuItem
+                  key={r}
+                  onClick={() => setRole(r)}
+                  className="cursor-pointer"
+                >
+                  {r}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button className="flex items-center gap-1.5 bg-primary/10 text-primary rounded-md px-3 py-1.5 text-xs font-semibold shrink-0">
+            <span>View As: {role}</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        )}
 
         {/* Breadcrumbs */}
         <nav
