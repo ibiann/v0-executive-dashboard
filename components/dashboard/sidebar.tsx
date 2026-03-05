@@ -8,23 +8,39 @@ import {
   Archive,
   ChevronRight,
   Network,
+  CalendarRange,
+  KanbanSquare,
+  Clock,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: "Portfolio", active: true },
-  { icon: Map, label: "Resource Map" },
-  { icon: BarChart3, label: "Strategic Reports" },
-  { icon: Archive, label: "Project Archives" },
+const STRATEGIC_NAV = [
+  { icon: LayoutDashboard, label: "Portfolio",          active: true },
+  { icon: Map,             label: "Resource Map" },
+  { icon: BarChart3,       label: "Strategic Reports" },
+  { icon: Archive,         label: "Project Archives" },
+];
+
+const PM_NAV = [
+  { icon: CalendarRange,  label: "Phase Planning",      active: true },
+  { icon: KanbanSquare,   label: "Task Kanban" },
+  { icon: Users,          label: "Resource Allocation" },
+  { icon: Clock,          label: "Timesheet Approval" },
 ];
 
 export function Sidebar({
   collapsed,
   setCollapsed,
+  mode = "strategic",
 }: {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
+  mode?: "strategic" | "pm";
 }) {
+  const navItems = mode === "pm" ? PM_NAV : STRATEGIC_NAV;
+  const label = mode === "pm" ? "PM Workspace" : "Lancsnetworks";
+
   return (
     <aside
       className={cn(
@@ -39,25 +55,35 @@ export function Sidebar({
         </div>
         {!collapsed && (
           <span className="font-semibold text-sm text-white tracking-wide truncate">
-            Lancsnetworks
+            {label}
           </span>
         )}
       </div>
 
+      {/* Section label */}
+      {!collapsed && (
+        <div className="px-4 pt-3 pb-1">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            {mode === "pm" ? "Level 2 — PM" : "Level 1 — Strategic"}
+          </span>
+        </div>
+      )}
+
       {/* Nav */}
-      <nav className="flex-1 py-3 space-y-0.5 px-2">
-        {NAV_ITEMS.map(({ icon: Icon, label, active }) => (
+      <nav className="flex-1 py-1 space-y-0.5 px-2">
+        {navItems.map(({ icon: Icon, label: navLabel, active }) => (
           <button
-            key={label}
+            key={navLabel}
             className={cn(
               "flex items-center gap-3 w-full rounded-md px-2 py-2 text-sm font-medium transition-colors",
               active
                 ? "bg-sidebar-accent text-white"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white"
             )}
+            title={collapsed ? navLabel : undefined}
           >
             <Icon className="w-4 h-4 shrink-0" />
-            {!collapsed && <span className="truncate">{label}</span>}
+            {!collapsed && <span className="truncate">{navLabel}</span>}
           </button>
         ))}
       </nav>
@@ -80,3 +106,4 @@ export function Sidebar({
     </aside>
   );
 }
+
