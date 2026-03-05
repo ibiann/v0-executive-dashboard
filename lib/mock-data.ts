@@ -25,6 +25,7 @@ export interface TaskCard {
   assigneeName: string;
   priority: "high" | "medium" | "low";
   dueDate: string;
+  plannedHours?: number; // for Planned: Xh display on engineer cards
 }
 
 export interface TimesheetEntry {
@@ -369,6 +370,7 @@ export interface EngNotification {
 export interface LogWorkEntry {
   id: string;
   taskId: string;
+  taskTitle: string; // for timesheet table display
   date: string;
   loggedHours: number;
   description: string;
@@ -423,8 +425,8 @@ export const ENGINEER_PROFILE: EngineerProfile = {
     },
   ],
   logWorkHistory: [
-    { id: "LW-001", taskId: "T-003", date: "2026-03-01", loggedHours: 6, description: "Completed timing analysis pass 1, 3 violations remain", progressPercent: 45 },
-    { id: "LW-002", taskId: "T-003", date: "2026-03-04", loggedHours: 8, description: "Resolved 2 of 3 critical path violations", progressPercent: 65 },
+    { id: "LW-001", taskId: "T-003", taskTitle: "FPGA synthesis timing closure", date: "2026-03-01", loggedHours: 6, description: "Completed timing analysis pass 1, 3 violations remain", progressPercent: 45 },
+    { id: "LW-002", taskId: "T-003", taskTitle: "FPGA synthesis timing closure", date: "2026-03-04", loggedHours: 8, description: "Resolved 2 of 3 critical path violations", progressPercent: 65 },
   ],
 };
 
@@ -480,14 +482,14 @@ export const TACTICAL_DATA: Record<string, TacticalProjectData> = {
       { id: "M-04", name: "Priya Nair",    initials: "PN", role: "Test Engineer",    department: "FPGA",     activeTasks: 2 },
     ],
     tasks: [
-      { id: "T-001", title: "Requirements capture",          phase: "Survey",  status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "medium", dueDate: "2025-02-28" },
-      { id: "T-002", title: "Architecture design",           phase: "R&D",     status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-05-30" },
-      { id: "T-003", title: "FPGA synthesis timing closure", phase: "R&D",     status: "In Progress", assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-12-01" },
-      { id: "T-004", title: "Signal integrity report",       phase: "R&D",     status: "Review",      assigneeId: "M-02", assigneeName: "Maria Russo",  priority: "medium", dueDate: "2025-11-15" },
-      { id: "T-005", title: "IP core integration",           phase: "R&D",     status: "In Progress", assigneeId: "M-03", assigneeName: "Kwame Asante", priority: "high",   dueDate: "2025-12-20" },
-      { id: "T-006", title: "Functional simulation",         phase: "Test",    status: "New",         assigneeId: "M-04", assigneeName: "Priya Nair",   priority: "medium", dueDate: "2026-02-01" },
-      { id: "T-007", title: "Hardware test bench setup",     phase: "Test",    status: "New",         assigneeId: "M-04", assigneeName: "Priya Nair",   priority: "medium", dueDate: "2026-02-28" },
-      { id: "T-008", title: "Release package preparation",   phase: "Release", status: "New",         assigneeId: "M-02", assigneeName: "Maria Russo",  priority: "low",    dueDate: "2026-06-01" },
+      { id: "T-001", title: "Requirements capture",          phase: "Survey",  status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "medium", dueDate: "2025-02-28", plannedHours: 40  },
+      { id: "T-002", title: "Architecture design",           phase: "R&D",     status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-05-30", plannedHours: 120 },
+      { id: "T-003", title: "FPGA synthesis timing closure", phase: "R&D",     status: "In Progress", assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-12-01", plannedHours: 80  },
+      { id: "T-004", title: "Signal integrity report",       phase: "R&D",     status: "Waiting for Review", assigneeId: "M-02", assigneeName: "Maria Russo",  priority: "medium", dueDate: "2025-11-15", plannedHours: 40  },
+      { id: "T-005", title: "IP core integration",           phase: "R&D",     status: "In Progress", assigneeId: "M-03", assigneeName: "Kwame Asante", priority: "high",   dueDate: "2025-12-20", plannedHours: 60  },
+      { id: "T-006", title: "Functional simulation",         phase: "Test",    status: "New",         assigneeId: "M-04", assigneeName: "Priya Nair",   priority: "medium", dueDate: "2026-02-01", plannedHours: 60  },
+      { id: "T-007", title: "Hardware test bench setup",     phase: "Test",    status: "New",         assigneeId: "M-04", assigneeName: "Priya Nair",   priority: "medium", dueDate: "2026-02-28", plannedHours: 50  },
+      { id: "T-008", title: "Release package preparation",   phase: "Release", status: "New",         assigneeId: "M-02", assigneeName: "Maria Russo",  priority: "low",    dueDate: "2026-06-01", plannedHours: 30  },
     ],
     timesheets: [
       { id: "TS-001", date: "2026-03-01", memberId: "M-01", memberName: "James Hart",   taskId: "T-003", taskTitle: "FPGA synthesis timing closure", description: "Completed timing analysis pass 1, 3 violations remain", loggedHours: 6, progressPercent: 45, approved: false },

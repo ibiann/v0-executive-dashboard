@@ -18,6 +18,7 @@ import {
   PhaseDefinition,
   TaskCard,
   TacticalProjectData,
+  EngNotification,
   getPortfolioHealth,
   getGlobalSPI,
   getResourceEfficiency,
@@ -33,6 +34,16 @@ export function DashboardClient() {
 
   // Tactical state keyed by project ID
   const [tacticalData, setTacticalData] = useState<Record<string, TacticalProjectData>>(TACTICAL_DATA);
+
+  // PM notification inbox — receives cross-level signals from the Engineer portal
+  const [pmNotifications, setPmNotifications] = useState<EngNotification[]>([]);
+
+  const handlePmNotify = (notif: Omit<EngNotification, "id" | "read">) => {
+    setPmNotifications((prev) => [
+      { ...notif, id: `PN-${Date.now()}`, read: false },
+      ...prev,
+    ]);
+  };
 
   // ─── Derived values ──────────────────────────────────────────────────────
   const activeProjects = projects.filter((p) => !p.closed);
@@ -161,7 +172,7 @@ export function DashboardClient() {
 
           {/* ── Level 3: Engineer Operational Portal ── */}
           {isEngineerMode ? (
-            <OperationalPortal />
+            <OperationalPortal onNotifyPM={handlePmNotify} />
           ) : (
             <>
               {/* Page heading */}
