@@ -3,6 +3,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Pulsing amber border for "Waiting for Review" Kanban cards */
+@keyframes pulse-border {
+  0%, 100% { border-color: rgb(251 191 36 / 1); box-shadow: 0 0 0 0 rgb(251 191 36 / 0.4); }
+  50%       { border-color: rgb(251 191 36 / 0.6); box-shadow: 0 0 0 4px rgb(251 191 36 / 0); }
+}
+.animate-pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
 :root {
   /* Odoo-inspired palette: purple brand, neutral grays, clean white */
   --background: oklch(0.97 0 0);        /* #F0F1F3 page bg */

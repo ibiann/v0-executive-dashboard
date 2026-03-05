@@ -5,7 +5,7 @@ export type Phase = "Survey" | "R&D" | "Test" | "Release";
 
 // ─── Tactical Level Types ─────────────────────────────────────────────────────
 
-export type TaskStatus = "New" | "In Progress" | "Review" | "Done";
+export type TaskStatus = "New" | "In Progress" | "Waiting for Review" | "Review" | "Done";
 
 export interface TeamMember {
   id: string;

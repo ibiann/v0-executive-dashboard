@@ -180,6 +180,7 @@ export function DashboardClient() {
             <TacticalView
               project={focusedProject!}
               tactical={focusedTactical!}
+              role={role}
               onTimesheetApprove={handleTimesheetApprove}
               onPhaseSave={handlePhaseSave}
               onTasksChange={handleTasksChange}
