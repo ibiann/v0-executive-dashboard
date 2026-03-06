@@ -22,6 +22,7 @@ import {
   TaskCard,
   TacticalProjectData,
   EngNotification,
+  DEFAULT_PHASE_WEIGHTS,
   getPortfolioHealth,
   getGlobalSPI,
   getResourceEfficiency,
@@ -260,6 +261,44 @@ export function DashboardClient() {
             <PortfolioTable
               projects={displayedProjects}
               onProjectClick={(p) => setSelectedProject(p)}
+              onCreateProject={(data) => {
+                // Create new project and redirect to tactical view
+                const newProjectId = `PRJ-${String(projects.length + 1).padStart(3, "0")}`;
+                const newProject: Project = {
+                  id: newProjectId,
+                  name: data.name,
+                  pm: data.pm,
+                  category: data.category,
+                  ragStatus: "green",
+                  phases: [],
+                  overallProgress: 0,
+                  plannedProgress: 0,
+                  department: data.category === "Software" ? "Software" : data.category === "Hardware" ? "Hardware" : "FPGA",
+                  resourceEfficiency: 0,
+                  startDate: new Date().toISOString().split("T")[0],
+                  endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+                  closed: false,
+                  hoursData: [],
+                  overdueTasks: [],
+                };
+                
+                // Initialize tactical data with default phases based on category
+                const defaultPhases = DEFAULT_PHASE_WEIGHTS[data.category];
+                const newTacticalData: TacticalProjectData = {
+                  projectId: newProjectId,
+                  phases: defaultPhases,
+                  tasks: [],
+                  team: [],
+                  timesheets: [],
+                };
+                
+                // Add project and tactical data to state
+                setProjects((prev) => [...prev, newProject]);
+                setTacticalData((prev) => ({ ...prev, [newProjectId]: newTacticalData }));
+                
+                // Switch to tactical view for this project
+                setFocusedProjectId(newProjectId);
+              }}
             />
 
             <ResourceHeatmap />

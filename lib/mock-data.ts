@@ -584,6 +584,29 @@ export interface EngineerProfile {
 }
 
 // Pre-seeded engineer profile: James Hart on PRJ-001
+// ─── Default Phase Weights by Category ────────────────────────────────────────
+
+export const DEFAULT_PHASE_WEIGHTS: Record<"Software" | "Hardware" | "FPGA", PhaseDefinition[]> = {
+  Software: [
+    { phase: "Survey", startDate: "", endDate: "", weight: 10 },
+    { phase: "R&D", startDate: "", endDate: "", weight: 45 },
+    { phase: "Test", startDate: "", endDate: "", weight: 30 },
+    { phase: "Release", startDate: "", endDate: "", weight: 15 },
+  ],
+  Hardware: [
+    { phase: "Survey", startDate: "", endDate: "", weight: 15 },
+    { phase: "R&D", startDate: "", endDate: "", weight: 50 },
+    { phase: "Test", startDate: "", endDate: "", weight: 25 },
+    { phase: "Release", startDate: "", endDate: "", weight: 10 },
+  ],
+  FPGA: [
+    { phase: "Survey", startDate: "", endDate: "", weight: 12 },
+    { phase: "R&D", startDate: "", endDate: "", weight: 52 },
+    { phase: "Test", startDate: "", endDate: "", weight: 28 },
+    { phase: "Release", startDate: "", endDate: "", weight: 8 },
+  ],
+};
+
 export const ENGINEER_PROFILE: EngineerProfile = {
   memberId: "M-01",
   name: "James Hart",

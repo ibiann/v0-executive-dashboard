@@ -54,11 +54,26 @@ function PhaseLegend({ phases }: { phases: Project["phases"] }) {
 interface PortfolioTableProps {
   projects: Project[];
   onProjectClick: (project: Project) => void;
+  onCreateProject?: (data: { name: string; category: "Software" | "Hardware" | "FPGA"; pm: string }) => void;
 }
 
-export function PortfolioTable({ projects, onProjectClick }: PortfolioTableProps) {
+const AVAILABLE_PMS = [
+  "Alice Morgan",
+  "Bob Chen",
+  "Carol Davies",
+  "Dan Osei",
+  "Eve Nkosi",
+  "Fatima Hassan",
+  "George Ikoro",
+  "Helen Li",
+];
+
+export function PortfolioTable({ projects, onProjectClick, onCreateProject }: PortfolioTableProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [projectName, setProjectName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"Software" | "Hardware" | "FPGA" | null>(null);
+  const [selectedPM, setSelectedPM] = useState<string | null>(null);
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
@@ -166,69 +181,155 @@ export function PortfolioTable({ projects, onProjectClick }: PortfolioTableProps
         </table>
       </div>
 
-      {/* New Project Modal */}
+      {/* Advanced Multi-Step Project Creation Modal */}
       {showNewProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setShowNewProjectModal(false)} aria-hidden="true" />
-          <div className="relative bg-card border border-border rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
-            <h3 className="text-sm font-bold text-foreground">Create New Project</h3>
-            
-            {!selectedCategory ? (
+          <div className="absolute inset-0 bg-black/40" onClick={() => {
+            setShowNewProjectModal(false);
+            setStep(1);
+            setProjectName("");
+            setSelectedCategory(null);
+            setSelectedPM(null);
+          }} aria-hidden="true" />
+          <div className="relative bg-card border border-border rounded-lg shadow-xl max-w-lg w-full p-6 space-y-6">
+            {/* Progress indicator */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Create New Project</h3>
+              <div className="flex items-center gap-1.5">
+                {[1, 2, 3].map((s) => (
+                  <div
+                    key={s}
+                    className={cn(
+                      "h-1.5 w-8 rounded-full transition-colors",
+                      s <= step ? "bg-primary" : "bg-border"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Step 1: Project Name */}
+            {step === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-2">Project Name</label>
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="e.g., NavComm v2.0, Sentinel Pro..."
+                    className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && projectName.trim()) {
+                        setStep(2);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Category Selection */}
+            {step === 2 && (
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">Select a project category:</p>
+                <p className="text-xs text-muted-foreground">Select project category:</p>
                 {["Software", "Hardware", "FPGA"].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat as "Software" | "Hardware" | "FPGA")}
-                    className="w-full flex items-center gap-3 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    className={cn(
+                      "w-full flex items-center gap-3 p-3 border rounded-lg transition-colors text-left",
+                      selectedCategory === cat
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    )}
                   >
                     <CategoryIcon category={cat as "Software" | "Hardware" | "FPGA"} />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-xs font-semibold text-foreground">{cat}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {cat === "Software" && "Applications, services, firmware"}
-                        {cat === "Hardware" && "Circuit boards, devices, equipment"}
-                        {cat === "FPGA" && "FPGA cores, RTL implementations"}
+                        {cat === "Software" && "Default weights: Survey 10%, R&D 45%, Test 30%, Release 15%"}
+                        {cat === "Hardware" && "Default weights: Survey 15%, R&D 50%, Test 25%, Release 10%"}
+                        {cat === "FPGA" && "Default weights: Survey 12%, R&D 52%, Test 28%, Release 8%"}
                       </p>
                     </div>
                   </button>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {/* Step 3: PM Selection */}
+            {step === 3 && (
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Creating {selectedCategory} project. Form will appear in dashboard.
-                </p>
-                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <p className="text-xs font-semibold text-green-700">✓ Category selected: {selectedCategory}</p>
+                <p className="text-xs text-muted-foreground">Assign Project Manager:</p>
+                <div className="max-h-48 overflow-y-auto space-y-2">
+                  {AVAILABLE_PMS.map((pm) => (
+                    <button
+                      key={pm}
+                      onClick={() => setSelectedPM(pm)}
+                      className={cn(
+                        "w-full flex items-center gap-2 p-2.5 border rounded-lg transition-colors text-left text-xs",
+                        selectedPM === pm
+                          ? "border-primary bg-primary/5 font-semibold"
+                          : "border-border hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                        {pm.split(" ").map((n) => n[0]).join("")}
+                      </div>
+                      <span>{pm}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-2 pt-2">
+            {/* Navigation buttons */}
+            <div className="flex items-center gap-2 pt-4 border-t border-border">
               <button
                 onClick={() => {
-                  if (selectedCategory) {
-                    setSelectedCategory(null);
+                  if (step > 1) {
+                    setStep((s) => (s - 1) as 1 | 2 | 3);
                   } else {
                     setShowNewProjectModal(false);
+                    setStep(1);
+                    setProjectName("");
+                    setSelectedCategory(null);
+                    setSelectedPM(null);
                   }
                 }}
                 className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
               >
-                {selectedCategory ? "Back" : "Cancel"}
+                {step === 1 ? "Cancel" : "Back"}
               </button>
-              {selectedCategory && (
-                <button
-                  onClick={() => {
+              <button
+                onClick={() => {
+                  if (step === 1 && projectName.trim()) {
+                    setStep(2);
+                  } else if (step === 2 && selectedCategory) {
+                    setStep(3);
+                  } else if (step === 3 && selectedCategory && selectedPM) {
+                    onCreateProject?.({
+                      name: projectName.trim(),
+                      category: selectedCategory,
+                      pm: selectedPM,
+                    });
                     setShowNewProjectModal(false);
+                    setStep(1);
+                    setProjectName("");
                     setSelectedCategory(null);
-                  }}
-                  className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                >
-                  Create Project
-                </button>
-              )}
+                    setSelectedPM(null);
+                  }
+                }}
+                disabled={
+                  (step === 1 && !projectName.trim()) ||
+                  (step === 2 && !selectedCategory) ||
+                  (step === 3 && !selectedPM)
+                }
+                className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {step === 3 ? "Create Project" : "Next"}
+              </button>
             </div>
           </div>
         </div>
