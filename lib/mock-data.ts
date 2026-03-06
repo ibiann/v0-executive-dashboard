@@ -82,6 +82,7 @@ export interface Project {
   name: string;
   pm: string;
   ragStatus: RAGStatus;
+  category: "Software" | "Hardware" | "FPGA"; // Project category for closure requirements
   phases: PhaseProgress[];
   overallProgress: number;
   plannedProgress: number;
@@ -92,6 +93,11 @@ export interface Project {
   closed: boolean;
   hoursData: HoursData[];
   overdueTasks: OverdueTask[];
+  softwareMetrics?: {
+    codeCoverage: number; // 0–100%
+    bugDensity: number;   // bugs per KLOC
+    finalVelocity: number; // story points per sprint
+  };
 }
 
 export const PROJECTS: Project[] = [
@@ -99,6 +105,7 @@ export const PROJECTS: Project[] = [
     id: "PRJ-001",
     name: "NavComm FPGA Core",
     pm: "Alice Morgan",
+    category: "FPGA",
     ragStatus: "green",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -128,6 +135,7 @@ export const PROJECTS: Project[] = [
     id: "PRJ-002",
     name: "Sentinel Gateway v3",
     pm: "Bob Chen",
+    category: "Software",
     ragStatus: "amber",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -153,11 +161,13 @@ export const PROJECTS: Project[] = [
       { id: "T-038", title: "Load test environment setup", assignee: "S. Brooks", dueSince: "4 days", severity: "high" },
       { id: "T-041", title: "Documentation update", assignee: "B. Chen", dueSince: "1 day", severity: "low" },
     ],
+    softwareMetrics: { codeCoverage: 54, bugDensity: 4.8, finalVelocity: 42 },
   },
   {
     id: "PRJ-003",
     name: "Sigma Hardware Backplane",
     pm: "Carol Davies",
+    category: "Hardware",
     ragStatus: "red",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -189,6 +199,7 @@ export const PROJECTS: Project[] = [
     id: "PRJ-004",
     name: "ProtoLink Middleware",
     pm: "Dan Osei",
+    category: "Software",
     ragStatus: "green",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -212,11 +223,13 @@ export const PROJECTS: Project[] = [
     overdueTasks: [
       { id: "T-088", title: "Release candidate smoke test", assignee: "D. Osei", dueSince: "1 day", severity: "low" },
     ],
+    softwareMetrics: { codeCoverage: 61, bugDensity: 3.5, finalVelocity: 48 },
   },
   {
     id: "PRJ-005",
     name: "TerraEdge IoT Platform",
-    pm: "Eva Müller",
+    pm: "Eve Nkosi",
+    category: "Software",
     ragStatus: "amber",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -245,7 +258,8 @@ export const PROJECTS: Project[] = [
   {
     id: "PRJ-006",
     name: "Xenon Signal Processor",
-    pm: "Frank Li",
+    pm: "Fatima Hassan",
+    category: "FPGA",
     ragStatus: "green",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -270,8 +284,9 @@ export const PROJECTS: Project[] = [
   },
   {
     id: "PRJ-007",
-    name: "Helios Power Module",
-    pm: "Grace Kim",
+    name: "Vortex Firmware Suite",
+    pm: "George Ikoro",
+    category: "Software",
     ragStatus: "green",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -293,11 +308,13 @@ export const PROJECTS: Project[] = [
       { phase: "Release", planned: 80, actual: 78 },
     ],
     overdueTasks: [],
+    softwareMetrics: { codeCoverage: 78, bugDensity: 2.1, finalVelocity: 58 },
   },
   {
     id: "PRJ-008",
     name: "Vortex Firmware Suite",
-    pm: "Harry Patel",
+    pm: "Helen Li",
+    category: "Software",
     ragStatus: "red",
     phases: [
       { phase: "Survey", progress: 100, color: "#714B67" },
@@ -325,6 +342,7 @@ export const PROJECTS: Project[] = [
       { id: "T-157", title: "Static analysis remediation", assignee: "V. Singh", dueSince: "4 days", severity: "medium" },
       { id: "T-162", title: "Regression baseline update", assignee: "O. Mensah", dueSince: "2 days", severity: "low" },
     ],
+    softwareMetrics: { codeCoverage: 38, bugDensity: 6.1, finalVelocity: 35 },
   },
 ];
 

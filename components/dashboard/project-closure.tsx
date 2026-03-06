@@ -5,6 +5,7 @@ import { Project, RISK_REGISTER } from "@/lib/mock-data";
 import { CheckCircle2, FileText, X, Download, Sheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 // ─── Export Modal ─────────────────────────────────────────────────────────────
 
@@ -139,10 +140,73 @@ function ExportModal({
             </table>
           </section>
 
-          {/* Section 2: Resource Efficiency Summary */}
+          {/* Section 2: Software Metrics (if applicable) */}
+          {project.category === "Software" && project.softwareMetrics && (
+            <section>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                2. Software Quality Metrics
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-muted/20 rounded-lg p-4">
+                {/* Code Coverage - Radial */}
+                <div className="flex flex-col items-center justify-center">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Code Coverage</p>
+                  <svg viewBox="0 0 100 100" className="w-24 h-24">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="8"
+                      strokeDasharray={`${(project.softwareMetrics.codeCoverage / 100) * 282.7} 282.7`}
+                      strokeLinecap="round"
+                      style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
+                    />
+                    <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="text-sm font-bold" fill="#1f2937">
+                      {project.softwareMetrics.codeCoverage}%
+                    </text>
+                  </svg>
+                </div>
+
+                {/* Bug Density - Bar Chart */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Bug Density (per KLOC)</p>
+                  <ResponsiveContainer width="100%" height={100}>
+                    <BarChart data={[{ name: "Bugs/KLOC", value: project.softwareMetrics.bugDensity }]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Bar dataKey="value" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Final Velocity - Line Chart */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Final Velocity (SP/Sprint)</p>
+                  <ResponsiveContainer width="100%" height={100}>
+                    <LineChart data={[
+                      { sprint: "S-1", velocity: Math.floor(project.softwareMetrics.finalVelocity * 0.7) },
+                      { sprint: "S-2", velocity: Math.floor(project.softwareMetrics.finalVelocity * 0.85) },
+                      { sprint: "S-3", velocity: project.softwareMetrics.finalVelocity },
+                    ]}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="sprint" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ fontSize: 12, backgroundColor: "#fff", border: "1px solid #e5e7eb" }} />
+                      <Line type="monotone" dataKey="velocity" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Section 3: Resource Efficiency Summary */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              2. Resource Efficiency Summary
+              {project.category === "Software" && project.softwareMetrics ? "3. Resource Efficiency Summary" : "2. Resource Efficiency Summary"}
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
@@ -170,10 +234,10 @@ function ExportModal({
             </div>
           </section>
 
-          {/* Section 3: Risk Mitigation Report */}
+          {/* Section 4: Risk Mitigation Report */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              3. Risk Mitigation Report
+              {project.category === "Software" && project.softwareMetrics ? "4. Risk Mitigation Report" : "3. Risk Mitigation Report"}
             </h3>
             {projectRisks.length === 0 ? (
               <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg px-3 py-3">
@@ -307,18 +371,28 @@ export function ProjectClosure({ projects, onProjectClick }: ProjectClosureProps
                   <FileText className="w-3.5 h-3.5" />
                   Insights
                 </Button>
-                {/* Export is only active once project is marked closed (closed === true) */}
+                {/* Export is only active when closed AND software metrics (if Software project) are at 100% */}
                 <Button
                   size="sm"
                   className={cn(
                     "flex-1 gap-1.5 text-xs border-0",
-                    project.closed
+                    project.closed && (project.category !== "Software" || (project.softwareMetrics && project.softwareMetrics.codeCoverage === 100))
                       ? "bg-green-600 hover:bg-green-700 text-white"
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   )}
-                  disabled={!project.closed}
-                  onClick={() => project.closed && setExportProject(project)}
-                  title={project.closed ? "Export final report" : "Only available once PM closes the project"}
+                  disabled={!(project.closed && (project.category !== "Software" || (project.softwareMetrics && project.softwareMetrics.codeCoverage === 100)))}
+                  onClick={() => {
+                    if (project.closed && (project.category !== "Software" || (project.softwareMetrics && project.softwareMetrics.codeCoverage === 100))) {
+                      setExportProject(project);
+                    }
+                  }}
+                  title={
+                    !project.closed
+                      ? "Close project first"
+                      : project.category === "Software" && project.softwareMetrics && project.softwareMetrics.codeCoverage < 100
+                      ? `Code Coverage at ${project.softwareMetrics.codeCoverage}% — must reach 100%`
+                      : "Export final report"
+                  }
                 >
                   <Sheet className="w-3.5 h-3.5" />
                   Export Report
