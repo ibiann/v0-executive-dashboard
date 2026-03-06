@@ -518,15 +518,22 @@ function PhaseCompletionBanner({
 function PhasePlanTab({
   tactical,
   onPhaseSave,
+  onTaskClick,
 }: {
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
+  onTaskClick?: (task: TaskCard) => void;
 }) {
   const [phases, setPhases]        = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [expandedPhase, setExpandedPhase] = useState<Phase | null>(null);
   const [showGantt, setShowGantt]   = useState(false);
   const [lockedPhases, setLockedPhases] = useState<Set<Phase>>(new Set());
+  const [showAddPhaseModal, setShowAddPhaseModal] = useState(false);
+  const [newPhaseName, setNewPhaseName] = useState("");
+  const [newPhaseStart, setNewPhaseStart] = useState("");
+  const [newPhaseEnd, setNewPhaseEnd] = useState("");
+  const [newPhaseWeight, setNewPhaseWeight] = useState("15");
 
   function handleChange(idx: number, field: keyof PhaseDefinition, value: string | number) {
     setPhases((prev) => {
@@ -544,21 +551,72 @@ function PhasePlanTab({
     Release: tactical.tasks.filter((t) => t.phase === "Release").length,
   };
 
+  // Calculate phase progress (average of task progress percentages)
+  const phaseProgress: Record<Phase, number> = {
+    Survey: 0,
+    "R&D": 0,
+    Test: 0,
+    Release: 0,
+  };
+  Object.keys(phaseProgress).forEach((phase) => {
+    const phaseTasks = tactical.tasks.filter((t) => t.phase === phase);
+    if (phaseTasks.length > 0) {
+      // This would come from timesheets in production; for now use task status heuristic
+      const avgProgress = phaseTasks.reduce((sum, task) => {
+        return sum + (task.status === "Done" ? 100 : task.status === "Waiting for Review" ? 80 : 40);
+      }, 0) / phaseTasks.length;
+      phaseProgress[phase as Phase] = Math.round(avgProgress);
+    }
+  });
+
+  // Overall progress = weighted average of phase progress
+  const overallProgress = Math.round(
+    phases.reduce((sum, phase) => {
+      return sum + (phaseProgress[phase.phase] * phase.weight) / 100;
+    }, 0)
+  );
+
   function lockPhase(phase: Phase) {
     setLockedPhases((prev) => new Set([...prev, phase]));
-    // In production, this would notify the Strategic Level via a callback
+  }
+
+  function handleAddPhase() {
+    if (!newPhaseName.trim() || !newPhaseStart || !newPhaseEnd || !newPhaseWeight) return;
+    const newWeight = parseInt(newPhaseWeight) || 0;
+    if (totalWeight + newWeight > 100) return; // Validation: don't exceed 100%
+    
+    const newPhase: PhaseDefinition = {
+      phase: newPhaseName.trim() as Phase,
+      startDate: newPhaseStart,
+      endDate: newPhaseEnd,
+      weight: newWeight,
+    };
+    setPhases((prev) => [...prev, newPhase]);
+    onPhaseSave([...phases, newPhase]);
+    setShowAddPhaseModal(false);
+    setNewPhaseName("");
+    setNewPhaseStart("");
+    setNewPhaseEnd("");
+    setNewPhaseWeight("15");
   }
 
   return (
     <section className="space-y-4">
       {/* Header with validation and controls */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
+        <div className="flex-1 space-y-2">
           <p className="text-xs text-muted-foreground">
             Define phase start/end dates and their weight in total project progress.
           </p>
+          {/* Overall progress bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full" style={{ width: `${overallProgress}%` }} />
+            </div>
+            <span className="text-xs font-semibold text-foreground whitespace-nowrap">Overall: {overallProgress}%</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {/* Gantt toggle */}
           <button
             onClick={() => setShowGantt(!showGantt)}
@@ -584,6 +642,7 @@ function PhasePlanTab({
 
           {/* Add Phase button */}
           <button
+            onClick={() => setShowAddPhaseModal(true)}
             className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
             title="Add a new phase"
           >
@@ -736,36 +795,150 @@ function PhasePlanTab({
                   </button>
                 </div>
 
-                {/* Expanded task list for this phase */}
+                {/* Expanded task table for this phase */}
                 {isExpanded && (
-                  <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-2 ml-8">
+                  <div className="bg-muted/30 border border-border rounded-lg overflow-hidden ml-8">
                     {phaseTasks.length > 0 ? (
-                      phaseTasks.map((task) => (
-                        <div key={task.id} className="flex items-start gap-2 text-xs">
-                          <span className={cn(
-                            "mt-0.5 w-1.5 h-1.5 rounded-full shrink-0",
-                            task.status === "Done" ? "bg-green-500" : task.status === "Waiting for Review" ? "bg-amber-500" : "bg-slate-400"
-                          )} />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{task.title}</p>
-                            <p className="text-muted-foreground">{task.assigneeName} • Due: {task.dueDate}</p>
-                          </div>
-                          <span className={cn(
-                            "text-[10px] font-semibold px-2 py-0.5 rounded whitespace-nowrap shrink-0",
-                            STATUS_COLORS[task.status]
-                          )}>
-                            {task.status}
-                          </span>
-                        </div>
-                      ))
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border/50 bg-muted/50">
+                            <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Task Name</th>
+                            <th className="px-3 py-2 text-left font-semibold text-muted-foreground">Assignee</th>
+                            <th className="px-3 py-2 text-center font-semibold text-muted-foreground">Status</th>
+                            <th className="px-3 py-2 text-center font-semibold text-muted-foreground">Logged Hours</th>
+                            <th className="px-3 py-2 text-center font-semibold text-muted-foreground">Progress %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {phaseTasks.map((task) => {
+                            const taskLogs = tactical.timesheets.filter((t) => t.taskId === task.id);
+                            const loggedHours = taskLogs.reduce((sum, t) => sum + t.loggedHours, 0);
+                            const progressPct = taskLogs.length > 0 ? Math.round(taskLogs[0].progressPercent) : 0;
+                            return (
+                              <tr
+                                key={task.id}
+                                onClick={() => onTaskClick?.(task)}
+                                className="border-b border-border/30 hover:bg-primary/5 cursor-pointer transition-colors"
+                              >
+                                <td className="px-3 py-2 truncate font-medium text-foreground">{task.title}</td>
+                                <td className="px-3 py-2 text-foreground">{task.assigneeName}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className={cn(
+                                    "text-[10px] font-semibold px-2 py-0.5 rounded inline-block",
+                                    STATUS_COLORS[task.status]
+                                  )}>
+                                    {task.status}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <span className="font-semibold">{loggedHours.toFixed(1)}h</span>
+                                  {task.plannedHours && (
+                                    <span className="text-muted-foreground"> / {task.plannedHours}h</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <div className="flex items-center gap-2 justify-center">
+                                    <div className="w-12 h-1 bg-border rounded-full overflow-hidden">
+                                      <div className="h-full bg-primary" style={{ width: `${progressPct}%` }} />
+                                    </div>
+                                    <span className="font-semibold w-10 text-right">{progressPct}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic">No tasks in this phase yet.</p>
+                      <p className="px-4 py-3 text-xs text-muted-foreground italic">No tasks in this phase yet.</p>
                     )}
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Phase Creation Modal */}
+      {showAddPhaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddPhaseModal(false)} aria-hidden="true" />
+          <div className="relative bg-card border border-border rounded-lg shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="text-sm font-bold text-foreground">Add New Phase</h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">Phase Name</label>
+                <input
+                  type="text"
+                  value={newPhaseName}
+                  onChange={(e) => setNewPhaseName(e.target.value)}
+                  placeholder="e.g., Validation, Integration"
+                  className="w-full text-xs border border-border rounded px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={newPhaseStart}
+                    onChange={(e) => setNewPhaseStart(e.target.value)}
+                    className="w-full text-xs border border-border rounded px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-foreground block mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={newPhaseEnd}
+                    onChange={(e) => setNewPhaseEnd(e.target.value)}
+                    className="w-full text-xs border border-border rounded px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-foreground block mb-1">Weight (%)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={newPhaseWeight}
+                    onChange={(e) => setNewPhaseWeight(e.target.value)}
+                    className="flex-1 text-xs border border-border rounded px-3 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {totalWeight + (parseInt(newPhaseWeight) || 0)}% total
+                  </span>
+                </div>
+                {totalWeight + (parseInt(newPhaseWeight) || 0) > 100 && (
+                  <p className="text-xs text-destructive mt-1">
+                    Total would exceed 100%. Reduce weight.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                onClick={() => setShowAddPhaseModal(false)}
+                className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPhase}
+                disabled={totalWeight + (parseInt(newPhaseWeight) || 0) > 100 || !newPhaseName.trim()}
+                className="flex-1 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Create Phase
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -1617,9 +1790,10 @@ export function TacticalView({
   onPhaseSave,
   onTasksChange,
 }: TacticalViewProps) {
-  const [activeTab,     setActiveTab]     = useState<Tab>("phases");
-  const [lockedTaskIds, setLockedTaskIds] = useState<Set<string>>(new Set());
-  const [phaseBanners,  setPhaseBanners]  = useState<string[]>([]);
+  const [activeTab,      setActiveTab]      = useState<Tab>("phases");
+  const [lockedTaskIds,  setLockedTaskIds]  = useState<Set<string>>(new Set());
+  const [phaseBanners,   setPhaseBanners]   = useState<string[]>([]);
+  const [selectedTask,   setSelectedTask]   = useState<TaskCard | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const pendingCount = tactical.timesheets.filter((t) => !t.approved).length;
@@ -1752,6 +1926,7 @@ export function TacticalView({
           <PhasePlanTab
             tactical={tactical}
             onPhaseSave={(phases) => onPhaseSave(project.id, phases)}
+            onTaskClick={(task) => setSelectedTask(task)}
           />
         )}
         {activeTab === "kanban" && (
@@ -1785,6 +1960,19 @@ export function TacticalView({
           team={tactical.team}
           onClose={() => setShowCreateModal(false)}
           onSave={handleCreateTask}
+        />
+      )}
+
+      {/* Task Detail Panel */}
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          role={role}
+          lockedTaskIds={lockedTaskIds}
+          timesheets={tactical.timesheets}
+          onClose={() => setSelectedTask(null)}
+          onApprove={handleApproveTask}
+          onReject={handleRejectTask}
         />
       )}
     </div>
