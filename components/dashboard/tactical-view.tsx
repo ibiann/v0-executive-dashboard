@@ -522,8 +522,11 @@ function PhasePlanTab({
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
 }) {
-  const [phases, setPhases]   = useState<PhaseDefinition[]>(tactical.phases);
+  const [phases, setPhases]        = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [expandedPhase, setExpandedPhase] = useState<Phase | null>(null);
+  const [showGantt, setShowGantt]   = useState(false);
+  const [lockedPhases, setLockedPhases] = useState<Set<Phase>>(new Set());
 
   function handleChange(idx: number, field: keyof PhaseDefinition, value: string | number) {
     setPhases((prev) => {
@@ -534,103 +537,236 @@ function PhasePlanTab({
   }
 
   const totalWeight = phases.reduce((s, p) => s + p.weight, 0);
+  const phaseTaskCounts: Record<Phase, number> = {
+    Survey: tactical.tasks.filter((t) => t.phase === "Survey").length,
+    "R&D": tactical.tasks.filter((t) => t.phase === "R&D").length,
+    Test: tactical.tasks.filter((t) => t.phase === "Test").length,
+    Release: tactical.tasks.filter((t) => t.phase === "Release").length,
+  };
+
+  function lockPhase(phase: Phase) {
+    setLockedPhases((prev) => new Set([...prev, phase]));
+    // In production, this would notify the Strategic Level via a callback
+  }
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Define phase start/end dates and their weight in total project progress. Weights must sum to 100%.
-        </p>
-        <span className={cn(
-          "text-xs font-semibold px-2 py-0.5 rounded-full",
-          totalWeight === 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
-        )}>
-          Total: {totalWeight}%
-        </span>
+      {/* Header with validation and controls */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground">
+            Define phase start/end dates and their weight in total project progress.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Gantt toggle */}
+          <button
+            onClick={() => setShowGantt(!showGantt)}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors",
+              showGantt
+                ? "bg-primary/10 border-primary text-primary"
+                : "border-border text-muted-foreground hover:bg-muted/50"
+            )}
+            title="Toggle Gantt timeline view"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Gantt
+          </button>
+
+          {/* Validation badge */}
+          <span className={cn(
+            "text-xs font-semibold px-3 py-1.5 rounded-full",
+            totalWeight === 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
+          )}>
+            Total: {totalWeight}%
+          </span>
+
+          {/* Add Phase button */}
+          <button
+            className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
+            title="Add a new phase"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Phase
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-2">
-        {phases.map((phase, idx) => {
-          const isEditing = editingIdx === idx;
-          return (
-            <div
-              key={phase.phase}
-              className="bg-card border border-border rounded-lg px-4 py-3 grid grid-cols-[1fr_1fr_1fr_auto_auto] gap-3 items-center"
-            >
-              <div className="flex items-center gap-2">
-                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", PHASE_COLORS[phase.phase])}>
-                  {phase.phase}
-                </span>
-              </div>
+      {/* Validation warning if weights don't sum to 100 */}
+      {totalWeight !== 100 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-red-700">Phase weights must sum to 100%</p>
+            <p className="text-xs text-red-600 mt-0.5">Current total: {totalWeight}%. Please adjust phase weights.</p>
+          </div>
+        </div>
+      )}
 
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={phase.startDate}
-                  onChange={(e) => handleChange(idx, "startDate", e.target.value)}
-                  className="text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  <span className="text-foreground/60 mr-1">Start:</span>{phase.startDate}
-                </span>
-              )}
-
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={phase.endDate}
-                  onChange={(e) => handleChange(idx, "endDate", e.target.value)}
-                  className="text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  <span className="text-foreground/60 mr-1">End:</span>{phase.endDate}
-                </span>
-              )}
-
-              <div className="flex items-center gap-1.5">
-                {isEditing ? (
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={phase.weight}
-                    onChange={(e) => handleChange(idx, "weight", parseInt(e.target.value) || 0)}
-                    className="w-16 text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                ) : (
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <div className="w-20 h-1.5 rounded-full bg-border overflow-hidden">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${phase.weight}%` }} />
+      {/* List or Gantt view */}
+      {showGantt ? (
+        // ─── Gantt Timeline View ───
+        <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+          <p className="text-xs font-semibold text-foreground mb-3">Project Timeline with Dependencies</p>
+          <div className="space-y-4">
+            {phases.map((phase, idx) => {
+              const startDate = new Date(phase.startDate);
+              const endDate = new Date(phase.endDate);
+              const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              return (
+                <div key={phase.phase} className="flex items-center gap-3">
+                  <div className="w-20 text-xs font-semibold text-foreground">{phase.phase}</div>
+                  <div className="flex-1">
+                    <div className="relative h-6 bg-muted rounded-md overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full flex items-center px-2 text-[10px] font-semibold text-white",
+                          PHASE_COLORS[phase.phase]
+                        )}
+                        style={{ width: `${Math.min((duration / 180) * 100, 100)}%` }}
+                      >
+                        {duration}d
+                      </div>
                     </div>
-                    <span className="text-xs font-semibold text-foreground shrink-0">{phase.weight}%</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground w-24 text-right">{phase.startDate} → {phase.endDate}</span>
+                  {idx < phases.length - 1 && <ArrowRight className="w-3 h-3 text-muted-foreground/40" />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        // ─── List View (List) ───
+        <div className="space-y-2">
+          {phases.map((phase, idx) => {
+            const isEditing = editingIdx === idx;
+            const isExpanded = expandedPhase === phase.phase;
+            const taskCount = phaseTaskCounts[phase.phase];
+            const phaseTasks = tactical.tasks.filter((t) => t.phase === phase.phase);
+            const allTasksComplete = phaseTasks.length > 0 && phaseTasks.every((t) => t.status === "Done");
+
+            return (
+              <div key={phase.phase} className="space-y-2">
+                {/* Phase row */}
+                <div className="bg-card border border-border rounded-lg px-4 py-3 grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-3 items-center">
+                  {/* Expandable phase name */}
+                  <button
+                    onClick={() => setExpandedPhase(isExpanded ? null : phase.phase)}
+                    className="p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
+                  </button>
+
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full shrink-0", PHASE_COLORS[phase.phase])}>
+                      {phase.phase}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{taskCount} Tasks</span>
+                  </div>
+
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="date"
+                        value={phase.startDate}
+                        onChange={(e) => handleChange(idx, "startDate", e.target.value)}
+                        className="text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <input
+                        type="date"
+                        value={phase.endDate}
+                        onChange={(e) => handleChange(idx, "endDate", e.target.value)}
+                        className="text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={phase.weight}
+                        onChange={(e) => handleChange(idx, "weight", parseInt(e.target.value) || 0)}
+                        className="w-16 text-xs border border-border rounded px-2 py-1 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-muted-foreground">{phase.startDate}</span>
+                      <span className="text-xs text-muted-foreground">{phase.endDate}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-16 h-1.5 rounded-full bg-border overflow-hidden">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${phase.weight}%` }} />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground shrink-0">{phase.weight}%</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Edit/Save button */}
+                  <button
+                    onClick={() => {
+                      if (isEditing) { onPhaseSave(phases); setEditingIdx(null); }
+                      else { setEditingIdx(idx); }
+                    }}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    {isEditing
+                      ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                      : <Pencil className="w-3.5 h-3.5" />
+                    }
+                  </button>
+
+                  {/* Phase status lock button — enabled only if all tasks are Done */}
+                  <button
+                    onClick={() => allTasksComplete && lockPhase(phase.phase)}
+                    disabled={!allTasksComplete}
+                    className={cn(
+                      "p-1.5 rounded-md transition-colors",
+                      allTasksComplete
+                        ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                        : "text-muted-foreground/40 cursor-not-allowed"
+                    )}
+                    title={allTasksComplete ? "Lock this phase (all tasks Done)" : "Complete all tasks to lock phase"}
+                  >
+                    {lockedPhases.has(phase.phase) ? (
+                      <Lock className="w-3.5 h-3.5" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Expanded task list for this phase */}
+                {isExpanded && (
+                  <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-2 ml-8">
+                    {phaseTasks.length > 0 ? (
+                      phaseTasks.map((task) => (
+                        <div key={task.id} className="flex items-start gap-2 text-xs">
+                          <span className={cn(
+                            "mt-0.5 w-1.5 h-1.5 rounded-full shrink-0",
+                            task.status === "Done" ? "bg-green-500" : task.status === "Waiting for Review" ? "bg-amber-500" : "bg-slate-400"
+                          )} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground truncate">{task.title}</p>
+                            <p className="text-muted-foreground">{task.assigneeName} • Due: {task.dueDate}</p>
+                          </div>
+                          <span className={cn(
+                            "text-[10px] font-semibold px-2 py-0.5 rounded whitespace-nowrap shrink-0",
+                            STATUS_COLORS[task.status]
+                          )}>
+                            {task.status}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No tasks in this phase yet.</p>
+                    )}
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={() => {
-                  if (isEditing) { onPhaseSave(phases); setEditingIdx(null); }
-                  else { setEditingIdx(idx); }
-                }}
-                className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                aria-label={isEditing ? "Save phase" : "Edit phase"}
-              >
-                {isEditing
-                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                  : <Pencil className="w-3.5 h-3.5" />
-                }
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      {totalWeight !== 100 && (
-        <p className="text-xs text-destructive">
-          Phase weights must sum to exactly 100%. Current total: {totalWeight}%.
-        </p>
+            );
+          })}
+        </div>
       )}
     </section>
   );
