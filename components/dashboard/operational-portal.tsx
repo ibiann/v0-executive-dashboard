@@ -45,6 +45,40 @@ function hoursFromSeconds(secs: number): number {
 
 const TODAY = new Date().toISOString().split("T")[0];
 
+// ─── Constraint Helpers ───────────────────────────────────────────────────────
+
+function isOverBudget(actualHours: number, plannedHours: number | undefined): boolean {
+  return plannedHours ? actualHours > plannedHours : false;
+}
+
+function calculateSPI(
+  progressPercent: number,
+  elapsedSeconds: number,
+  plannedHours: number | undefined
+): number {
+  if (!plannedHours || plannedHours === 0) return 1;
+  const elapsedHours = elapsedSeconds / 3600;
+  const plannedProgressHours = (plannedHours * progressPercent) / 100;
+  return plannedProgressHours > 0 ? elapsedHours / plannedProgressHours : 1;
+}
+
+function isDailyHoursLow(todayLogs: LogWorkEntry[]): boolean {
+  const dailyTotal = todayLogs.reduce((sum, log) => sum + log.loggedHours, 0);
+  return dailyTotal < 8;
+}
+
+function isDescriptionTooShort(description: string): boolean {
+  return description.trim().length < 20;
+}
+
+function getCurrentHourOfDay(): number {
+  return new Date().getHours() + new Date().getMinutes() / 60;
+}
+
+function isEndOfDay(): boolean {
+  return getCurrentHourOfDay() >= 17.5; // 5:30 PM
+}
+
 // ─── Notification Bell ────────────────────────────────────────────────────────
 
 function NotificationBell({
@@ -237,6 +271,12 @@ function LogWorkModal({
               <FileText className="w-3.5 h-3.5 text-muted-foreground" />
               {isFinalLog ? "Technical Details / Results" : "Technical Description"}
               <span className="text-destructive ml-0.5">*</span>
+              <span className={cn(
+                "ml-auto text-[10px] font-normal",
+                isDescriptionTooShort(description) ? "text-red-600 font-semibold" : "text-muted-foreground"
+              )}>
+                {description.trim().length}/20 chars {isDescriptionTooShort(description) && "(min 20 required)"}
+              </span>
             </label>
             <textarea
               value={description}
@@ -245,8 +285,14 @@ function LogWorkModal({
                 ? "Describe what was achieved, test results, known issues, and sign-off notes..."
                 : "Describe the work completed, issues encountered, next steps..."}
               rows={4} required
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className={cn(
+                "w-full border rounded-lg px-3 py-2 text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring",
+                isDescriptionTooShort(description) ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-ring"
+              )}
             />
+            {isDescriptionTooShort(description) && (
+              <p className="text-[10px] text-red-600 font-medium">Description must be at least 20 characters to ensure quality documentation.</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -276,9 +322,19 @@ function LogWorkModal({
           <div className="flex items-center gap-2 pt-1">
             <button
               type="submit"
+              disabled={!hours || Number(hours) <= 0 || !description.trim() || isDescriptionTooShort(description)}
+              title={
+                isDescriptionTooShort(description)
+                  ? "Description must be at least 20 characters"
+                  : !description.trim()
+                  ? "Description is required"
+                  : undefined
+              }
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors",
-                isFinalLog
+                !hours || Number(hours) <= 0 || !description.trim() || isDescriptionTooShort(description)
+                  ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                  : isFinalLog
                   ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
@@ -359,6 +415,8 @@ function MyTaskCard({
 }) {
   const isLocked  = task.status === "Waiting for Review" || task.status === "Done";
   const isWaiting = task.status === "Waiting for Review";
+  const spi = calculateSPI(progress, elapsed, task.plannedHours);
+  const isAtRisk = spi < 0.8 && progress > 0;
 
   return (
     <div className={cn(
@@ -367,6 +425,8 @@ function MyTaskCard({
         ? "border-primary/40 ring-1 ring-primary/20 shadow-md"
         : isWaiting
         ? "animate-pulse-border border-amber-400"
+        : isAtRisk
+        ? "border-orange-300 ring-1 ring-orange-100"
         : "border-border hover:shadow-md",
       isLocked && runState !== "running" && "opacity-80"
     )}>
@@ -384,6 +444,12 @@ function MyTaskCard({
             <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", PHASE_COLOR[task.phase])}>
               {task.phase}
             </span>
+            {isAtRisk && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-orange-300 bg-orange-50 text-orange-700 flex items-center gap-1">
+                <AlertTriangle className="w-2.5 h-2.5" />
+                At Risk (SPI {spi.toFixed(2)})
+              </span>
+            )}
           </div>
         </div>
         {runState === "running" && (
@@ -397,14 +463,20 @@ function MyTaskCard({
         )}
       </div>
 
-      {/* Planned / Actual hours */}
-      <div className="flex items-center gap-4 text-xs">
+      {/* Planned / Actual hours with budget constraint indicator */}
+      <div className="flex items-center gap-4 text-xs flex-wrap">
         <span className="text-muted-foreground">
           Planned: <span className="font-semibold text-foreground">{task.plannedHours ?? "—"}h</span>
         </span>
         <span className="text-muted-foreground">
           Actual: <span className={cn("font-semibold", actualHours > (task.plannedHours ?? Infinity) ? "text-red-600" : "text-foreground")}>{actualHours}h</span>
         </span>
+        {isOverBudget(actualHours, task.plannedHours) && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-300">
+            <AlertTriangle className="w-2.5 h-2.5" />
+            Over Budget
+          </span>
+        )}
       </div>
 
       {/* Project + due */}
@@ -478,7 +550,14 @@ function MyTaskCard({
             </button>
             <button
               onClick={onFinishReview}
-              className="flex items-center gap-1.5 text-xs font-semibold border border-green-300 bg-green-50 text-green-700 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
+              disabled={progress < 100}
+              title={progress < 100 ? `Task must be 100% complete to finish (currently ${progress}%)` : "Submit for PM review"}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors",
+                progress >= 100
+                  ? "border border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                  : "border border-muted bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
+              )}
             >
               <CheckCircle className="w-3.5 h-3.5" />
               Finish &amp; Review
@@ -1098,6 +1177,30 @@ export function OperationalPortal({
         {activeSection === "timesheets"  && renderTimesheets()}
         {activeSection === "documents"   && renderDocuments()}
       </div>
+
+      {/* ── End-of-Day Banner (5:30 PM check) ── */}
+      {isEndOfDay() && (() => {
+        const todayLogs = logWorkHistory.filter((log) => log.date === TODAY);
+        const dailyTotal = todayLogs.reduce((sum, log) => sum + log.loggedHours, 0);
+        const isLow = dailyTotal < 8;
+        return isLow ? (
+          <div className="sticky bottom-0 left-0 right-0 z-40 bg-amber-50 border-t border-amber-200 px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-amber-900">End of Day — Daily Hours Below 8</p>
+                <p className="text-xs text-amber-700 mt-0.5">You have logged {dailyTotal.toFixed(1)}h so far today. Target is 8h per day.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveSection("timesheets")}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 text-white hover:bg-amber-700 transition-colors shrink-0"
+            >
+              View Timesheets
+            </button>
+          </div>
+        ) : null;
+      })()}
 
       {/* ── Log Work / Finish & Review Modal ── */}
       {logModal && (
