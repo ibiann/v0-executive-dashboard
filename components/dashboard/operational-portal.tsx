@@ -19,6 +19,7 @@ import {
   RAGStatus,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { TaskDetailPanel } from "./task-detail-panel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -401,6 +402,7 @@ function MyTaskCard({
   onPause,
   onFinishReview,
   onLogWork,
+  onTaskClick,
 }: {
   task: TaskCard;
   progress: number;
@@ -412,6 +414,7 @@ function MyTaskCard({
   onPause: () => void;
   onFinishReview: () => void;
   onLogWork: () => void;
+  onTaskClick?: () => void;
 }) {
   const isLocked  = task.status === "Waiting for Review" || task.status === "Done";
   const isWaiting = task.status === "Waiting for Review";
@@ -419,17 +422,19 @@ function MyTaskCard({
   const isAtRisk = spi < 0.8 && progress > 0;
 
   return (
-    <div className={cn(
-      "bg-card border rounded-xl p-4 flex flex-col gap-3 shadow-sm transition-all",
-      runState === "running"
-        ? "border-primary/40 ring-1 ring-primary/20 shadow-md"
-        : isWaiting
-        ? "animate-pulse-border border-amber-400"
-        : isAtRisk
-        ? "border-orange-300 ring-1 ring-orange-100"
-        : "border-border hover:shadow-md",
-      isLocked && runState !== "running" && "opacity-80"
-    )}>
+    <div
+      onClick={onTaskClick}
+      className={cn(
+        "bg-card border rounded-xl p-4 flex flex-col gap-3 shadow-sm transition-all cursor-pointer",
+        runState === "running"
+          ? "border-primary/40 ring-1 ring-primary/20 shadow-md"
+          : isWaiting
+          ? "animate-pulse-border border-amber-400"
+          : isAtRisk
+          ? "border-orange-300 ring-1 ring-orange-100"
+          : "border-border hover:shadow-md hover:border-primary/20",
+        isLocked && runState !== "running" && "opacity-80"
+      )}>
       {/* Top row */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -842,6 +847,7 @@ export function OperationalPortal({
 
   const [notifications, setNotifications] = useState<EngNotification[]>(profile.notifications);
   const [activeSection, setActiveSection] = useState<ActiveSection>("home");
+  const [selectedTask, setSelectedTask] = useState<TaskCard | null>(null);
   const [logModal, setLogModal] = useState<{ task: TaskCard; mode: "logwork" | "finish" } | null>(null);
 
   // ── Timer tick ──────────────────────────────────────────────────────────────
@@ -998,19 +1004,20 @@ export function OperationalPortal({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {activeTasks.slice(0, 3).map((task) => (
-                <MyTaskCard
-                  key={task.id}
-                  task={task}
-                  progress={taskProgress[task.id] ?? 0}
-                  runState={runState[task.id] ?? "idle"}
-                  elapsed={elapsed[task.id] ?? 0}
-                  actualHours={actualHours[task.id] ?? 0}
-                  projectName={task.projectName}
-                  onStart={() => handleStart(task.id)}
-                  onPause={() => handlePause(task.id)}
-                  onFinishReview={() => handleFinishReview(task)}
-                  onLogWork={() => handleOpenLogWork(task)}
-                />
+                  <MyTaskCard
+                    key={task.id}
+                    task={task}
+                    progress={taskProgress[task.id] ?? 0}
+                    runState={taskRunState[task.id] ?? "idle"}
+                    elapsed={taskElapsed[task.id] ?? 0}
+                    actualHours={taskActualHours[task.id] ?? 0}
+                    projectName={filteredTactic.projectId}
+                    onStart={() => handleTaskStart(task.id)}
+                    onPause={() => handleTaskPause(task.id)}
+                    onFinishReview={() => handleFinishReview(task.id)}
+                    onLogWork={() => setLogModal({ task, mode: "work" })}
+                    onTaskClick={() => setSelectedTask(task)}
+                  />
               ))}
             </div>
           )}
@@ -1211,6 +1218,30 @@ export function OperationalPortal({
           isFinalLog={logModal.mode === "finish"}
           onSave={(entry) => handleLogWorkSave(entry, logModal.mode === "finish")}
           onClose={() => setLogModal(null)}
+        />
+      )}
+
+      {/* ── Task Detail Panel (Slide-over Drawer) ── */}
+      {selectedTask && (
+        <TaskDetailPanel
+          task={selectedTask}
+          projectName={engineerProfile.projectName}
+          isOpen={!!selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onLogWork={() => {
+            setLogModal({ task: selectedTask, mode: "work" });
+            setSelectedTask(null);
+          }}
+          onFinishReview={() => {
+            handleFinishReview(selectedTask.id);
+            setSelectedTask(null);
+          }}
+          timerRunning={taskRunState[selectedTask.id] === "running"}
+          elapsedSeconds={taskElapsed[selectedTask.id] ?? 0}
+          progress={taskProgress[selectedTask.id] ?? 0}
+          actualHours={taskActualHours[selectedTask.id] ?? 0}
+          onTimerStart={() => handleTaskStart(selectedTask.id)}
+          onTimerPause={() => handleTaskPause(selectedTask.id)}
         />
       )}
     </div>
