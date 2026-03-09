@@ -1011,7 +1011,7 @@ export function OperationalPortal({
                     runState={runState[task.id] ?? "idle"}
                     elapsed={elapsed[task.id] ?? 0}
                     actualHours={actualHours[task.id] ?? 0}
-                    projectName={filteredTactic.projectId}
+                    projectName={task.projectName}
                     onStart={() => handleStart(task.id)}
                     onPause={() => handlePause(task.id)}
                     onFinishReview={() => handleFinishReview(task)}
