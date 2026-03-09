@@ -1008,14 +1008,14 @@ export function OperationalPortal({
                     key={task.id}
                     task={task}
                     progress={taskProgress[task.id] ?? 0}
-                    runState={taskRunState[task.id] ?? "idle"}
-                    elapsed={taskElapsed[task.id] ?? 0}
-                    actualHours={taskActualHours[task.id] ?? 0}
+                    runState={runState[task.id] ?? "idle"}
+                    elapsed={elapsed[task.id] ?? 0}
+                    actualHours={actualHours[task.id] ?? 0}
                     projectName={filteredTactic.projectId}
-                    onStart={() => handleTaskStart(task.id)}
-                    onPause={() => handleTaskPause(task.id)}
-                    onFinishReview={() => handleFinishReview(task.id)}
-                    onLogWork={() => setLogModal({ task, mode: "work" })}
+                    onStart={() => handleStart(task.id)}
+                    onPause={() => handlePause(task.id)}
+                    onFinishReview={() => handleFinishReview(task)}
+                    onLogWork={() => handleOpenLogWork(task)}
                     onTaskClick={() => setSelectedTask(task)}
                   />
               ))}
@@ -1225,23 +1225,23 @@ export function OperationalPortal({
       {selectedTask && (
         <TaskDetailPanel
           task={selectedTask}
-          projectName={engineerProfile.projectName}
+          projectName={profile.projectName}
           isOpen={!!selectedTask}
           onClose={() => setSelectedTask(null)}
           onLogWork={() => {
-            setLogModal({ task: selectedTask, mode: "work" });
+            handleOpenLogWork(selectedTask);
             setSelectedTask(null);
           }}
           onFinishReview={() => {
-            handleFinishReview(selectedTask.id);
+            handleFinishReview(selectedTask);
             setSelectedTask(null);
           }}
-          timerRunning={taskRunState[selectedTask.id] === "running"}
-          elapsedSeconds={taskElapsed[selectedTask.id] ?? 0}
+          timerRunning={runState[selectedTask.id] === "running"}
+          elapsedSeconds={elapsed[selectedTask.id] ?? 0}
           progress={taskProgress[selectedTask.id] ?? 0}
-          actualHours={taskActualHours[selectedTask.id] ?? 0}
-          onTimerStart={() => handleTaskStart(selectedTask.id)}
-          onTimerPause={() => handleTaskPause(selectedTask.id)}
+          actualHours={actualHours[selectedTask.id] ?? 0}
+          onTimerStart={() => handleStart(selectedTask.id)}
+          onTimerPause={() => handlePause(selectedTask.id)}
         />
       )}
     </div>
