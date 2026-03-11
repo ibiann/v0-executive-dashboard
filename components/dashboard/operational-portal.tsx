@@ -20,6 +20,7 @@ import {
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { TaskDetailPanel } from "./task-detail-panel";
+import { JustificationModal, JustificationData } from "./justification-modal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -849,6 +850,7 @@ export function OperationalPortal({
   const [activeSection, setActiveSection] = useState<ActiveSection>("home");
   const [selectedTask, setSelectedTask] = useState<TaskCard | null>(null);
   const [logModal, setLogModal] = useState<{ task: TaskCard; mode: "logwork" | "finish" } | null>(null);
+  const [justifyModal, setJustifyModal] = useState<{ task: TaskCard } | null>(null);
 
   // ── Timer tick ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -864,6 +866,14 @@ export function OperationalPortal({
   }, [runState]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
+
+  const handleJustificationSubmit = useCallback((_data: JustificationData) => {
+    // Justification accepted — proceed to the final log work modal
+    if (!justifyModal) return;
+    const task = justifyModal.task;
+    setJustifyModal(null);
+    setLogModal({ task, mode: "finish" });
+  }, [justifyModal]);
 
   const handleStart = useCallback((taskId: string) => {
     setRunState((prev) => {
@@ -884,8 +894,15 @@ export function OperationalPortal({
 
   const handleFinishReview = useCallback((task: TaskCard) => {
     setRunState((prev) => ({ ...prev, [task.id]: "paused" }));
-    setLogModal({ task, mode: "finish" });
-  }, []);
+    const actual  = actualHours[task.id] ?? 0;
+    const planned = task.plannedHours;
+    // Constraint: if over-budget, require justification before LogWork modal
+    if (planned && actual > planned) {
+      setJustifyModal({ task });
+    } else {
+      setLogModal({ task, mode: "finish" });
+    }
+  }, [actualHours]);
 
   const handleLogWorkSave = useCallback(
     (entry: Omit<LogWorkEntry, "id">, isFinal: boolean) => {
@@ -1208,6 +1225,18 @@ export function OperationalPortal({
           </div>
         ) : null;
       })()}
+
+      {/* ── Justification Modal (over-budget gate) ── */}
+      {justifyModal && (
+        <JustificationModal
+          taskId={justifyModal.task.id}
+          taskTitle={justifyModal.task.title}
+          plannedHours={justifyModal.task.plannedHours ?? 0}
+          actualHours={actualHours[justifyModal.task.id] ?? 0}
+          onSubmit={handleJustificationSubmit}
+          onCancel={() => setJustifyModal(null)}
+        />
+      )}
 
       {/* ── Log Work / Finish & Review Modal ── */}
       {logModal && (
