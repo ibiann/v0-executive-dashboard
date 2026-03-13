@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetClose,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { TaskCard, Phase } from "@/lib/mock-data";
@@ -129,6 +130,9 @@ export function TaskDetailPanel({
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground mb-1">Task ID: {task.id}</p>
                 <SheetTitle className="text-lg font-bold text-foreground line-clamp-2">{task.title}</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Task detail panel for {task.id} — {task.phase} phase, {task.status} status.
+                </SheetDescription>
               </div>
               <SheetClose className="shrink-0">
                 <X className="w-4 h-4" />
