@@ -19,6 +19,7 @@ import {
   RAGStatus,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/lib/i18n";
 import { TaskDetailPanel } from "./task-detail-panel";
 import { JustificationModal, JustificationData } from "./justification-modal";
 
@@ -189,6 +190,7 @@ function LogWorkModal({
   onSave: (entry: Omit<LogWorkEntry, "id">) => void;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const [date, setDate]               = useState(TODAY);
   const [hours, setHours]             = useState<number | "">(prefillHours ?? "");
   const [description, setDescription] = useState("");
@@ -221,7 +223,7 @@ function LogWorkModal({
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">
-                {isFinalLog ? "Final Log — Finish & Review" : "Log Work"}
+                {isFinalLog ? t("finishReview") : t("logWork")}
               </p>
               <p className="text-xs text-muted-foreground truncate max-w-52">{task.title}</p>
             </div>
@@ -255,7 +257,7 @@ function LogWorkModal({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Timer className="w-3.5 h-3.5 text-muted-foreground" />
-              Hours Logged
+              {t("actualHours")}
               {prefillHours !== undefined && (
                 <span className="ml-auto text-[10px] text-primary font-normal">(auto-filled from timer)</span>
               )}
@@ -271,13 +273,13 @@ function LogWorkModal({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-              {isFinalLog ? "Technical Details / Results" : "Technical Description"}
+              {isFinalLog ? t("finishReview") : t("description")}
               <span className="text-destructive ml-0.5">*</span>
               <span className={cn(
                 "ml-auto text-[10px] font-normal",
                 isDescriptionTooShort(description) ? "text-red-600 font-semibold" : "text-muted-foreground"
               )}>
-                {description.trim().length}/20 chars {isDescriptionTooShort(description) && "(min 20 required)"}
+                {description.trim().length}/20 {isDescriptionTooShort(description) && `(${t("descriptionMin")})`}
               </span>
             </label>
             <textarea
@@ -301,7 +303,7 @@ function LogWorkModal({
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
-                Task Progress
+                {t("progress")}
               </label>
               <span className="text-sm font-bold text-primary">{progress}%</span>
             </div>
@@ -342,14 +344,14 @@ function LogWorkModal({
               )}
             >
               <Check className="w-4 h-4" />
-              {isFinalLog ? "Submit & Send for Review" : "Save Log Entry"}
+              {isFinalLog ? t("submit") : t("save")}
             </button>
             {!isFinalLog && (
               <button
                 type="button" onClick={onClose}
                 className="px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-muted-foreground hover:bg-secondary transition-colors"
               >
-                Cancel
+                {t("cancel")}
               </button>
             )}
           </div>
@@ -359,7 +361,7 @@ function LogWorkModal({
   );
 }
 
-// ─── Live Timer Display ───────────────────────────────────────────────────────
+// ─── Live Timer Display ──────────────────────────────────────────────��────────
 
 function TimerDisplay({ elapsed }: { elapsed: number }) {
   return (
@@ -421,6 +423,7 @@ function MyTaskCard({
   const isWaiting = task.status === "Waiting for Review";
   const spi = calculateSPI(progress, elapsed, task.plannedHours);
   const isAtRisk = spi < 0.8 && progress > 0;
+  const { t } = useLang();
 
   return (
     <div
@@ -552,12 +555,12 @@ function MyTaskCard({
               className="flex items-center gap-1.5 text-xs font-semibold border border-border bg-secondary text-foreground rounded-lg px-3 py-1.5 hover:bg-muted transition-colors"
             >
               <ClipboardList className="w-3.5 h-3.5" />
-              Log Work
+              {t("logWork")}
             </button>
             <button
               onClick={onFinishReview}
               disabled={progress < 100}
-              title={progress < 100 ? `Task must be 100% complete to finish (currently ${progress}%)` : "Submit for PM review"}
+              title={progress < 100 ? `${t("progress")}: ${progress}% — ${t("finishReview")}` : t("finishReview")}
               className={cn(
                 "flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors",
                 progress >= 100
@@ -566,7 +569,7 @@ function MyTaskCard({
               )}
             >
               <CheckCircle className="w-3.5 h-3.5" />
-              Finish &amp; Review
+              {t("finishReview")}
             </button>
           </div>
         </div>
