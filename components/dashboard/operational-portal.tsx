@@ -392,7 +392,7 @@ const RAG_DOT: Record<RAGStatus, string> = {
   red:   "bg-red-500",
 };
 
-// ─── Task Card ────────────────────────────────────────────────────────────────
+// ─── Task Card ────────────────���───────────────────────────────────────────────
 
 function MyTaskCard({
   task,
@@ -1274,6 +1274,7 @@ export function OperationalPortal({
           actualHours={actualHours[selectedTask.id] ?? 0}
           onTimerStart={() => handleStart(selectedTask.id)}
           onTimerPause={() => handlePause(selectedTask.id)}
+          workLogs={logWorkHistory.filter((l) => l.taskId === selectedTask.id)}
         />
       )}
     </div>
