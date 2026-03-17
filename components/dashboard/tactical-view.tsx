@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useLang } from "@/lib/i18n";
 import {
   PhaseDefinition,
   TaskCard,
@@ -534,6 +535,7 @@ function PhasePlanTab({
   const [newPhaseStart, setNewPhaseStart] = useState("");
   const [newPhaseEnd, setNewPhaseEnd] = useState("");
   const [newPhaseWeight, setNewPhaseWeight] = useState("15");
+  const { t, lang } = useLang();
 
   function handleChange(idx: number, field: keyof PhaseDefinition, value: string | number) {
     setPhases((prev) => {
@@ -606,7 +608,8 @@ function PhasePlanTab({
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 space-y-2">
           <p className="text-xs text-muted-foreground">
-            Define phase start/end dates and their weight in total project progress.
+              Define phase start/end dates and their weight in total project progress.
+              {lang === "vi" && " Tổng trọng số phải bằng 100%."}
           </p>
           {/* Overall progress bar */}
           <div className="flex items-center gap-2">
@@ -657,8 +660,14 @@ function PhasePlanTab({
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs font-semibold text-red-700">Phase weights must sum to 100%</p>
-            <p className="text-xs text-red-600 mt-0.5">Current total: {totalWeight}%. Please adjust phase weights.</p>
+            <p className="text-xs font-semibold text-red-700">
+              {lang === "vi" ? "Trọng số giai đoạn phải bằng 100%" : "Phase weights must sum to 100%"}
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">
+              {lang === "vi"
+                ? `Tổng hiện tại: ${totalWeight}%. Vui lòng điều chỉnh.`
+                : `Current total: ${totalWeight}%. Please adjust phase weights.`}
+            </p>
           </div>
         </div>
       )}
