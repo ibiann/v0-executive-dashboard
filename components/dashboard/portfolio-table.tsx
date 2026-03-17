@@ -99,7 +99,7 @@ export function PortfolioTable({ projects, onProjectClick, onCreateProject }: Po
               <th className="text-center px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-24">RAG</th>
               <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide min-w-64">Phase Progress</th>
               <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-20">Progress</th>
-              <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-20">SPI</th>
+              <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-24">Variance</th>
             </tr>
           </thead>
           <tbody>
@@ -107,9 +107,19 @@ export function PortfolioTable({ projects, onProjectClick, onCreateProject }: Po
               const rag = RAG_CONFIG[project.ragStatus];
               const spi =
                 project.plannedProgress > 0
-                  ? (project.overallProgress / project.plannedProgress).toFixed(2)
-                  : "N/A";
-              const spiNum = parseFloat(spi);
+                  ? project.overallProgress / project.plannedProgress
+                  : 1;
+              // Convert SPI to an approximate day variance:
+              // variance = (SPI - 1) × estimated duration days (assumed 180d default)
+              const durationDays = 180;
+              const varianceDays = Math.round((spi - 1) * durationDays);
+              const varianceLabel = varianceDays >= 0 ? `+${varianceDays}d` : `${varianceDays}d`;
+              const varianceColor =
+                varianceDays >= 0
+                  ? "bg-green-100 text-green-700"
+                  : varianceDays >= -7
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-red-100 text-red-600";
               return (
                 <tr
                   key={project.id}
@@ -159,19 +169,10 @@ export function PortfolioTable({ projects, onProjectClick, onCreateProject }: Po
                     </div>
                   </td>
 
-                  {/* SPI */}
+                  {/* Variance */}
                   <td className="px-4 py-3 text-right">
-                    <span
-                      className={cn(
-                        "text-xs font-semibold px-2 py-0.5 rounded",
-                        spiNum >= 1
-                          ? "bg-green-100 text-green-700"
-                          : spiNum >= 0.85
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-red-100 text-red-600"
-                      )}
-                    >
-                      {spi}
+                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded", varianceColor)}>
+                      {varianceLabel}
                     </span>
                   </td>
                 </tr>

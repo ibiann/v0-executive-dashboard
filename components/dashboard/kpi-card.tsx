@@ -28,7 +28,7 @@ export function KpiCard({
       ? "text-green-600"
       : trend === "down"
       ? "text-red-500"
-      : "text-muted-foreground";
+      : "text-amber-500";
 
   return (
     <div
