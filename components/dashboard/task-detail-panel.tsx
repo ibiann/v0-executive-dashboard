@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   X, Clock, Play, Pause, CheckCircle2, AlertTriangle, Upload,
   MessageCircle, FileText, ChevronRight, AlertCircle,
-  ClipboardList, ChevronDown, ChevronUp,
+  ClipboardList, ChevronDown, ChevronUp, Lock,
 } from "lucide-react";
 import {
   Sheet,
@@ -419,28 +419,149 @@ export function TaskDetailPanel({
             )}
           </div>
 
-          {/* Progress Slider */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground">
-                {lang === "vi" ? "Tiến độ" : "Progress"}
-              </span>
-              <span className="text-xs font-bold text-primary">{localProgress}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={localProgress}
-              onChange={(e) => setLocalProgress(parseInt(e.target.value))}
-              className="w-full"
-            />
-            {localProgress < 100 && (
-              <p className="text-[10px] text-amber-600 font-semibold">
-                {lang === "vi" ? "Phải đạt 100% để gửi phê duyệt" : "Must reach 100% to submit for review"}
-              </p>
-            )}
-          </div>
+          {/* Progress Slider — with validation constraints */}
+          {(() => {
+            // --- Rule 3: Auto-calc from subtasks ---
+            const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+            const subtaskTotal = task.subtasks?.length ?? 0;
+            const subtaskDone  = task.subtasks?.filter((s) => s.done).length ?? 0;
+            const subtaskProgress = hasSubtasks
+              ? Math.round((subtaskDone / subtaskTotal) * 100)
+              : null;
+
+            // --- Rule 4: Criteria gate at 90% ---
+            const criteriaItems = lang === "vi"
+              ? ["Mã nguồn vượt qua kiểm tra đơn vị", "Tài liệu kỹ thuật hoàn chỉnh", "Đánh giá ngang hàng được phê duyệt", "Không có lỗi mới phát sinh"]
+              : ["Code passes all unit tests", "Technical documentation completed", "Peer review approved", "No new defects introduced"];
+            // Mirrors the defaultChecked={idx < 2} from the DoD section — first 2 checked
+            const criteriaCheckedCount = 2;
+            const allCriteriaDone = criteriaCheckedCount >= criteriaItems.length;
+
+            // --- Rule 1: Only increase — slider min = saved progress ---
+            const savedProgress = progress; // prop = last saved value
+            const sliderMin = hasSubtasks ? 0 : savedProgress;
+
+            // --- Rule 2: Max +20% per update ---
+            const rawMax = hasSubtasks ? 100 : Math.min(savedProgress + 20, 100);
+            // --- Rule 4: Cap at 90% if criteria incomplete ---
+            const sliderMax = (!allCriteriaDone && rawMax > 90) ? 90 : rawMax;
+
+            const isSliderDisabled = hasSubtasks;
+            const displayValue = hasSubtasks ? subtaskProgress! : localProgress;
+
+            // Clamp localProgress into valid range whenever rules change
+            const clampedDisplay = Math.min(Math.max(displayValue, sliderMin), sliderMax);
+
+            // Determine color of filled track
+            const trackPct = sliderMax > sliderMin
+              ? ((clampedDisplay - sliderMin) / (sliderMax - sliderMin)) * 100
+              : 100;
+
+            return (
+              <div className="space-y-2">
+                {/* Header row */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    {lang === "vi" ? "Tiến độ" : "Progress"}
+                    {isSliderDisabled && (
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </span>
+                  <span className="text-xs font-bold text-primary">{clampedDisplay}%</span>
+                </div>
+
+                {/* Slider track wrapper — shows grayed-out zone beyond sliderMax */}
+                <div className="relative w-full">
+                  <input
+                    type="range"
+                    min={sliderMin}
+                    max={sliderMax}
+                    step={5}
+                    value={clampedDisplay}
+                    disabled={isSliderDisabled}
+                    title={isSliderDisabled ? "Tiến độ chỉ có thể tăng" : undefined}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value);
+                      // Rule 1: enforce only-increase
+                      if (v >= savedProgress) setLocalProgress(v);
+                    }}
+                    className={cn(
+                      "w-full h-2 rounded-full appearance-none transition-all",
+                      isSliderDisabled
+                        ? "cursor-not-allowed opacity-60"
+                        : "cursor-pointer"
+                    )}
+                    style={{
+                      background: isSliderDisabled
+                        ? `linear-gradient(to right, hsl(var(--muted-foreground)/0.3) ${trackPct}%, hsl(var(--secondary)) ${trackPct}%)`
+                        : `linear-gradient(to right, var(--primary) ${trackPct}%, ${sliderMax < 100 ? "hsl(var(--secondary)) " + trackPct + "%, hsl(var(--border)/0.4) " + trackPct + "%" : "hsl(var(--secondary)) " + trackPct + "%"})`,
+                    }}
+                  />
+                  {/* Grayed-out cap zone: from sliderMax to 100 */}
+                  {!isSliderDisabled && sliderMax < 100 && (
+                    <div
+                      className="absolute top-0 right-0 h-2 rounded-r-full bg-border/60 pointer-events-none"
+                      style={{ width: `${100 - sliderMax}%` }}
+                      title={lang === "vi" ? "Vùng bị khóa" : "Locked zone"}
+                    />
+                  )}
+                </div>
+
+                {/* Scale ticks */}
+                <div className="flex justify-between text-[10px] text-muted-foreground select-none">
+                  <span>0%</span>
+                  <span>25%</span>
+                  <span>50%</span>
+                  <span>75%</span>
+                  <span className={allCriteriaDone ? "text-green-600 font-semibold" : ""}>100%</span>
+                </div>
+
+                {/* Rule 1 hint: lock icon tooltip text */}
+                {!isSliderDisabled && savedProgress > 0 && (
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Lock className="w-3 h-3" />
+                    {lang === "vi" ? "Tiến độ chỉ có thể tăng" : "Progress can only increase"}
+                  </p>
+                )}
+
+                {/* Rule 2 hint: +20% cap */}
+                {!isSliderDisabled && sliderMax < 100 && allCriteriaDone && (
+                  <p className="text-[10px] text-amber-600 font-semibold">
+                    {lang === "vi"
+                      ? `Tối đa +20% mỗi lần cập nhật (tối đa ${sliderMax}%)`
+                      : `Max +20% per update (up to ${sliderMax}%)`}
+                  </p>
+                )}
+
+                {/* Rule 3 hint: auto-calc from subtasks */}
+                {isSliderDisabled && (
+                  <p className="text-[10px] text-primary font-semibold flex items-center gap-1">
+                    <ClipboardList className="w-3 h-3" />
+                    {lang === "vi"
+                      ? `Tự động tính từ công việc con (${subtaskDone}/${subtaskTotal} = ${subtaskProgress}%)`
+                      : `Auto-calculated from sub-tasks (${subtaskDone}/${subtaskTotal} = ${subtaskProgress}%)`}
+                  </p>
+                )}
+
+                {/* Rule 4 hint: criteria gate */}
+                {!isSliderDisabled && !allCriteriaDone && (
+                  <p className="text-[10px] text-amber-600 font-semibold flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {lang === "vi"
+                      ? "Hoàn thành tiêu chí để đạt 100%"
+                      : "Complete all criteria to reach 100%"}
+                  </p>
+                )}
+
+                {/* Generic 100% nudge (only when no other hint is shown) */}
+                {!isSliderDisabled && allCriteriaDone && clampedDisplay >= sliderMax && sliderMax === 100 && clampedDisplay < 100 && (
+                  <p className="text-[10px] text-amber-600 font-semibold">
+                    {lang === "vi" ? "Phải đạt 100% để gửi phê duyệt" : "Must reach 100% to submit for review"}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Due Date */}
           <div className="flex items-center justify-between text-xs bg-muted/30 rounded-lg p-2.5 border border-border">
