@@ -520,10 +520,12 @@ function PhasePlanTab({
   tactical,
   onPhaseSave,
   onTaskClick,
+  onSwitchToKanban,
 }: {
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
   onTaskClick?: (task: TaskCard) => void;
+  onSwitchToKanban?: (phase: Phase) => void;
 }) {
   const [phases, setPhases]        = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -602,9 +604,170 @@ function PhasePlanTab({
     setNewPhaseWeight("15");
   }
 
+  // ── Gantt timeline constants ──────────────────────────────────────────────────
+  const TIMELINE_START = new Date("2025-01-01");
+  const TIMELINE_END   = new Date("2026-06-30");
+  const totalDays = (TIMELINE_END.getTime() - TIMELINE_START.getTime()) / 86400000;
+
+  function pct(date: string) {
+    const d = new Date(date);
+    return Math.max(0, Math.min(100, ((d.getTime() - TIMELINE_START.getTime()) / 86400000 / totalDays) * 100));
+  }
+
+  const GANTT_COLORS: Record<string, { bar: string; fill: string }> = {
+    Survey:  { bar: "bg-violet-200", fill: "bg-violet-500" },
+    "R&D":   { bar: "bg-blue-200",   fill: "bg-blue-500"   },
+    Test:    { bar: "bg-green-200",  fill: "bg-green-500"  },
+    Release: { bar: "bg-orange-200", fill: "bg-orange-500" },
+  };
+
+  const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    Completed:   { label: "Completed",   cls: "bg-green-100 text-green-700" },
+    "In Progress": { label: "In Progress", cls: "bg-blue-100 text-blue-700" },
+    "Not Started": { label: "Not Started", cls: "bg-slate-100 text-slate-500" },
+  };
+
+  function phaseStatus(p: Phase): string {
+    const prog = phaseProgress[p];
+    if (prog >= 100) return "Completed";
+    if (prog > 0)    return "In Progress";
+    return "Not Started";
+  }
+
+  const doneCount = (p: Phase) => tactical.tasks.filter((t) => t.phase === p && t.status === "Done").length;
+
   return (
     <section className="space-y-4">
-      {/* Header with validation and controls */}
+
+      {/* ── Part 1: Visual Gantt Timeline ─────────────────────────────────────── */}
+      <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+        <p className="text-xs font-semibold text-foreground">Project Timeline</p>
+
+        {/* Month axis */}
+        <div className="relative h-4 ml-24 mr-2">
+          {["Jan '25", "Apr '25", "Jul '25", "Oct '25", "Jan '26", "Apr '26", "Jun '26"].map((label, i) => {
+            const dates = ["2025-01-01","2025-04-01","2025-07-01","2025-10-01","2026-01-01","2026-04-01","2026-06-15"];
+            const left = pct(dates[i]);
+            return (
+              <span
+                key={label}
+                className="absolute text-[10px] text-muted-foreground -translate-x-1/2 whitespace-nowrap"
+                style={{ left: `${left}%` }}
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Phase bars */}
+        <div className="space-y-2">
+          {phases.map((phase) => {
+            const colors = GANTT_COLORS[phase.phase] ?? { bar: "bg-muted", fill: "bg-primary" };
+            const leftPct  = pct(phase.startDate);
+            const rightPct = pct(phase.endDate);
+            const widthPct = Math.max(rightPct - leftPct, 1);
+            const prog     = phaseProgress[phase.phase] ?? 0;
+
+            return (
+              <div key={phase.phase} className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground w-20 shrink-0 text-right pr-1">{phase.phase}</span>
+                <div className="relative flex-1 h-5">
+                  {/* Full track */}
+                  <div className="absolute inset-0 bg-border/40 rounded-full" />
+                  {/* Phase bar (unfinished portion) */}
+                  <div
+                    className={cn("absolute top-0 h-full rounded-full", colors.bar)}
+                    style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                  />
+                  {/* Filled progress portion */}
+                  <div
+                    className={cn("absolute top-0 h-full rounded-full transition-all", colors.fill)}
+                    style={{ left: `${leftPct}%`, width: `${widthPct * prog / 100}%` }}
+                  />
+                  {/* Progress label inside bar */}
+                  {widthPct > 8 && (
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 text-[10px] font-bold text-white px-1 pointer-events-none"
+                      style={{ left: `${leftPct + 0.5}%` }}
+                    >
+                      {prog}%
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground w-20 shrink-0">{phase.endDate}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Part 2: Phase Cards ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {phases.map((phase) => {
+          const prog     = phaseProgress[phase.phase] ?? 0;
+          const total    = phaseTaskCounts[phase.phase] ?? 0;
+          const done     = doneCount(phase.phase);
+          const status   = phaseStatus(phase.phase);
+          const badge    = STATUS_BADGE[status] ?? STATUS_BADGE["Not Started"];
+          const colors   = GANTT_COLORS[phase.phase] ?? { bar: "bg-muted", fill: "bg-primary" };
+
+          return (
+            <div
+              key={phase.phase}
+              className="bg-card border border-border rounded-lg p-4 space-y-3 hover:shadow-sm transition-shadow"
+            >
+              {/* Phase name + badge */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className={cn("text-xs font-bold px-2.5 py-1 rounded-full", PHASE_COLORS[phase.phase])}>
+                  {phase.phase}
+                </span>
+                <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", badge.cls)}>
+                  {badge.label}
+                </span>
+              </div>
+
+              {/* Dates */}
+              <p className="text-[10px] text-muted-foreground">
+                {phase.startDate} &rarr; {phase.endDate}
+              </p>
+
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="font-bold text-foreground">{prog}%</span>
+                </div>
+                <div className={cn("w-full h-1.5 rounded-full overflow-hidden", colors.bar)}>
+                  <div
+                    className={cn("h-full rounded-full transition-all", colors.fill)}
+                    style={{ width: `${prog}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Task count */}
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">{done}/{total}</span> tasks done
+              </p>
+
+              {/* Xem tasks button */}
+              <button
+                onClick={() => onSwitchToKanban?.(phase.phase)}
+                className={cn(
+                  "w-full text-xs font-semibold py-1.5 rounded-md border transition-colors flex items-center justify-center gap-1",
+                  "border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                Xem tasks
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Header with controls (existing) ───────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 space-y-2">
           <p className="text-xs text-muted-foreground">
@@ -1323,6 +1486,7 @@ function KanbanTab({
   onApproveTask,
   onRejectTask,
   onCreateTask,
+  initialPhaseFilter,
 }: {
   tasks: TaskCard[];
   timesheets: TimesheetEntry[];
@@ -1332,10 +1496,12 @@ function KanbanTab({
   onApproveTask: (taskId: string) => void;
   onRejectTask: (taskId: string, reason: string) => void;
   onCreateTask: () => void;
+  initialPhaseFilter?: Phase | null;
 }) {
   const [dragTaskId,   setDragTaskId]   = useState<string | null>(null);
   const [dragOverCol,  setDragOverCol]  = useState<TaskStatus | null>(null);
   const [selectedTask, setSelectedTask] = useState<TaskCard | null>(null);
+  const [phaseFilter,  setPhaseFilter]  = useState<Phase | null>(initialPhaseFilter ?? null);
 
   const isPM = isReviewerRole(role);
   const allowedColumns = isPM ? ALL_STATUS_COLUMNS : ENGINEER_STATUS_COLUMNS;
@@ -1356,13 +1522,40 @@ function KanbanTab({
     setDragOverCol(col);
   }
 
+  const filteredTasks = phaseFilter ? tasks.filter((t) => t.phase === phaseFilter) : tasks;
+
   const tasksByStatus = ALL_STATUS_COLUMNS.reduce((acc, col) => {
-    acc[col] = tasks.filter((t) => t.status === col);
+    acc[col] = filteredTasks.filter((t) => t.status === col);
     return acc;
   }, {} as Record<TaskStatus, TaskCard[]>);
 
   return (
     <>
+      {/* Phase filter pills */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-xs text-muted-foreground font-medium">Phase:</span>
+        <button
+          onClick={() => setPhaseFilter(null)}
+          className={cn(
+            "text-xs px-2.5 py-1 rounded-full border transition-colors",
+            !phaseFilter ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted/50"
+          )}
+        >
+          All
+        </button>
+        {PHASES.map((p) => (
+          <button
+            key={p}
+            onClick={() => setPhaseFilter(phaseFilter === p ? null : p)}
+            className={cn(
+              "text-xs px-2.5 py-1 rounded-full border transition-colors",
+              phaseFilter === p ? `${PHASE_COLORS[p]} border-transparent` : "border-border text-muted-foreground hover:bg-muted/50"
+            )}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
       {/* Toolbar row */}
       <div className="flex items-center justify-between mb-3 gap-3">
         {!isPM && (
@@ -1804,6 +1997,7 @@ export function TacticalView({
   const [phaseBanners,   setPhaseBanners]   = useState<string[]>([]);
   const [selectedTask,   setSelectedTask]   = useState<TaskCard | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [kanbanPhaseFilter, setKanbanPhaseFilter] = useState<Phase | null>(null);
 
   const pendingCount = tactical.timesheets.filter((t) => !t.approved).length;
   const reviewCount  = tactical.tasks.filter((t) => t.status === "Waiting for Review").length;
@@ -1936,6 +2130,10 @@ export function TacticalView({
             tactical={tactical}
             onPhaseSave={(phases) => onPhaseSave(project.id, phases)}
             onTaskClick={(task) => setSelectedTask(task)}
+            onSwitchToKanban={(phase) => {
+              setKanbanPhaseFilter(phase);
+              setActiveTab("kanban");
+            }}
           />
         )}
         {activeTab === "kanban" && (
@@ -1948,6 +2146,7 @@ export function TacticalView({
             onApproveTask={handleApproveTask}
             onRejectTask={handleRejectTask}
             onCreateTask={() => { setShowCreateModal(true); setActiveTab("kanban"); }}
+            initialPhaseFilter={kanbanPhaseFilter}
           />
         )}
         {activeTab === "resources" && (
