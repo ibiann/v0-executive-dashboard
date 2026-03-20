@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopNav } from "@/components/dashboard/top-nav";
+import { useAuth, dashboardForRole } from "@/lib/auth";
 
 const SEGMENT_LABELS: Record<string, string> = {
   engineer:  "My Dashboard",
@@ -17,6 +19,18 @@ const SEGMENT_LABELS: Record<string, string> = {
 export function EngineerShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname  = usePathname();
+  const router    = useRouter();
+  const { user }  = useAuth();
+
+  useEffect(() => {
+    if (!user) { router.replace("/login"); return; }
+    if (user.role !== "Engineer") router.replace(dashboardForRole(user.role));
+  }, [user, router]);
+
+  if (!user || user.role !== "Engineer") {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   const segment   = pathname.split("/").pop() ?? "engineer";
   const pageLabel = SEGMENT_LABELS[segment] ?? "Engineer Portal";
 

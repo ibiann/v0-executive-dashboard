@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopNav } from "@/components/dashboard/top-nav";
 import { useAppState } from "@/lib/app-state";
+import { useAuth, dashboardForRole } from "@/lib/auth";
 import { CalendarRange, KanbanSquare, Users, Clock, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,16 @@ export function PmShell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const router    = useRouter();
   const { projects } = useAppState();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) { router.replace("/login"); return; }
+    if (user.role !== "PM") router.replace(dashboardForRole(user.role));
+  }, [user, router]);
+
+  if (!user || user.role !== "PM") {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   const projectId     = params.projectId;
   const project       = projects.find((p) => p.id === projectId);
