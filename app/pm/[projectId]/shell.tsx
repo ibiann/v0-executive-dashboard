@@ -19,18 +19,23 @@ const TABS = [
 
 export function PmShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted,   setMounted]   = useState(false);
   const params    = useParams<{ projectId: string }>();
   const pathname  = usePathname();
   const router    = useRouter();
   const { projects } = useAppState();
   const { user } = useAuth();
 
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
+    if (!mounted) return;
     if (!user) { router.replace("/login"); return; }
     if (user.role !== "PM") router.replace(dashboardForRole(user.role));
-  }, [user, router]);
+  }, [mounted, user, router]);
 
-  if (!user || user.role !== "PM") {
+  // Show blank shell until client hydrates
+  if (!mounted || !user || user.role !== "PM") {
     return <div className="min-h-screen bg-background" />;
   }
 

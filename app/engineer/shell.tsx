@@ -18,16 +18,20 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 export function EngineerShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mounted,   setMounted]   = useState(false);
   const pathname  = usePathname();
   const router    = useRouter();
   const { user }  = useAuth();
 
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
+    if (!mounted) return;
     if (!user) { router.replace("/login"); return; }
     if (user.role !== "Engineer") router.replace(dashboardForRole(user.role));
-  }, [user, router]);
+  }, [mounted, user, router]);
 
-  if (!user || user.role !== "Engineer") {
+  if (!mounted || !user || user.role !== "Engineer") {
     return <div className="min-h-screen bg-background" />;
   }
 
