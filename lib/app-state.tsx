@@ -33,7 +33,20 @@ const AppStateContext = createContext<AppState | null>(null);
 
 export function useAppState(): AppState {
   const ctx = useContext(AppStateContext);
-  if (!ctx) throw new Error("useAppState must be used inside <AppStateProvider>");
+  if (!ctx) {
+    // Return a safe no-op default during SSR / before provider mounts
+    return {
+      projects:        [],
+      tacticalData:    {},
+      pmNotifications: [],
+      handleRagChange:         () => {},
+      handleTimesheetApprove:  () => {},
+      handlePhaseSave:         () => {},
+      handleTasksChange:       () => {},
+      handlePmNotify:          () => {},
+      handleCreateProject:     () => "",
+    };
+  }
   return ctx;
 }
 

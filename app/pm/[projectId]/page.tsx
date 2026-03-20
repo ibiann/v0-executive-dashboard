@@ -5,3 +5,4 @@ export default function PmProjectRoot({ params }: { params: Promise<{ projectId:
   const { projectId } = use(params);
   redirect(`/pm/${projectId}/phases`);
 }
+

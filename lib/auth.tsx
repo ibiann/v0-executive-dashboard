@@ -44,7 +44,14 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
+  if (!ctx) {
+    // Return safe no-op default during SSR / before provider mounts
+    return {
+      user:    null,
+      login:   () => ({ ok: false }),
+      logout:  () => {},
+    };
+  }
   return ctx;
 }
 
