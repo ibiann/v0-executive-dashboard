@@ -55,6 +55,7 @@ interface PortfolioTableProps {
   projects: Project[];
   onProjectClick: (project: Project) => void;
   onCreateProject?: (data: { name: string; category: "Software" | "Hardware" | "FPGA"; pm: string }) => void;
+  canCreateProject?: boolean;
 }
 
 const AVAILABLE_PMS = [
@@ -68,7 +69,7 @@ const AVAILABLE_PMS = [
   "Helen Li",
 ];
 
-export function PortfolioTable({ projects, onProjectClick, onCreateProject }: PortfolioTableProps) {
+export function PortfolioTable({ projects, onProjectClick, onCreateProject, canCreateProject = true }: PortfolioTableProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [projectName, setProjectName] = useState("");
@@ -81,13 +82,15 @@ export function PortfolioTable({ projects, onProjectClick, onCreateProject }: Po
         <h2 className="text-sm font-semibold text-foreground">Portfolio Status</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">{projects.length} projects</span>
-          <button
-            onClick={() => setShowNewProjectModal(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            New Project
-          </button>
+          {canCreateProject && (
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New Project
+            </button>
+          )}
         </div>
       </div>
 

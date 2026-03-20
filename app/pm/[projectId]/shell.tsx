@@ -9,6 +9,7 @@ import { useAppState } from "@/lib/app-state";
 import { useAuth, dashboardForRole } from "@/lib/auth";
 import { CalendarRange, KanbanSquare, Users, Clock, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const TABS = [
   { label: "Phase Plan",          segment: "phases",    icon: CalendarRange },
@@ -30,9 +31,15 @@ export function PmShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!user) { router.replace("/login"); return; }
-    if (user.role !== "PM") router.replace(dashboardForRole(user.role));
-  }, [mounted, user, router]);
+    if (!user) { router.replace("/login"); toast.error("Phien dang nhap da het han"); return; }
+    if (user.role !== "PM") { router.replace(dashboardForRole(user.role, user)); return; }
+    // PM can only access their own assigned projects
+    if (user.projectIds.length > 0 && !user.projectIds.includes(params.projectId)) {
+      const fallback = `/pm/${user.projectIds[0]}/phases`;
+      toast.error("Ban khong duoc giao du an nay");
+      router.replace(fallback);
+    }
+  }, [mounted, user, router, params.projectId]);
 
   // Show blank shell until client hydrates
   if (!mounted || !user || user.role !== "PM") {

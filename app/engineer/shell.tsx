@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopNav } from "@/components/dashboard/top-nav";
 import { useAuth, dashboardForRole } from "@/lib/auth";
+import { toast } from "sonner";
 
 const SEGMENT_LABELS: Record<string, string> = {
   engineer:  "My Dashboard",
@@ -27,8 +28,8 @@ export function EngineerShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!user) { router.replace("/login"); return; }
-    if (user.role !== "Engineer") router.replace(dashboardForRole(user.role));
+    if (!user) { router.replace("/login"); toast.error("Phien dang nhap da het han"); return; }
+    if (user.role !== "Engineer") { toast.error("Ban khong co quyen truy cap trang nay"); router.replace(dashboardForRole(user.role, user)); }
   }, [mounted, user, router]);
 
   if (!mounted || !user || user.role !== "Engineer") {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppState } from "@/lib/app-state";
+import { useAuth } from "@/lib/auth";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { PortfolioTable } from "@/components/dashboard/portfolio-table";
 import { ResourceHeatmap } from "@/components/dashboard/resource-heatmap";
@@ -13,6 +14,7 @@ import { Activity, Layers, Gauge, Users } from "lucide-react";
 
 export default function CtoPortfolioPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const {
     projects,
     handleRagChange,
@@ -85,6 +87,7 @@ export default function CtoPortfolioPage() {
       <PortfolioTable
         projects={activeProjects}
         onProjectClick={(p) => router.push(`/cto/project/${p.id}`)}
+        canCreateProject={user?.role === "CTO"}
         onCreateProject={(data) => {
           const newId = handleCreateProject(data);
           router.push(`/pm/${newId}/phases`);

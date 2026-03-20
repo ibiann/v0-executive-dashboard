@@ -73,7 +73,7 @@ function memberInitials(name: string) {
 }
 
 function isReviewerRole(role: ViewRole): boolean {
-  return role === "PM" || role === "CTO";
+  return role === "PM";
 }
 
 // ─── Task Creation Modal (Odoo-style form) ────────────────────────────────────
@@ -521,11 +521,13 @@ function PhasePlanTab({
   onPhaseSave,
   onTaskClick,
   onSwitchToKanban,
+  canEdit = true,
 }: {
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
   onTaskClick?: (task: TaskCard) => void;
   onSwitchToKanban?: (phase: Phase) => void;
+  canEdit?: boolean;
 }) {
   const [phases, setPhases]        = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -1837,10 +1839,12 @@ function TimesheetTab({
   timesheets,
   lockedTaskIds,
   onApprove,
+  canApprove = true,
 }: {
   timesheets: TimesheetEntry[];
   lockedTaskIds: Set<string>;
   onApprove: (id: string) => void;
+  canApprove?: boolean;
 }) {
   const pending  = timesheets.filter((t) => !t.approved);
   const approved = timesheets.filter((t) => t.approved);
@@ -1893,7 +1897,7 @@ function TimesheetTab({
             <span className="inline-flex items-center gap-1 text-green-700 font-semibold">
               <CheckCheck className="w-3.5 h-3.5" /> Approved
             </span>
-          ) : (
+          ) : canApprove ? (
             <Button
               size="sm"
               onClick={() => onApprove(entry.id)}
@@ -1901,6 +1905,10 @@ function TimesheetTab({
             >
               Approve
             </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-600 text-[10px] font-semibold">
+              Pending
+            </span>
           )}
         </td>
       </tr>
@@ -2156,6 +2164,7 @@ export function TacticalView({
           <TimesheetTab
             timesheets={tactical.timesheets}
             lockedTaskIds={lockedTaskIds}
+            canApprove={role === "PM"}
             onApprove={(entryId) => onTimesheetApprove(project.id, entryId)}
           />
         )}
