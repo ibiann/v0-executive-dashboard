@@ -1,5 +1,6 @@
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return <DashboardClient />;
+export default function RootPage() {
+  redirect("/cto");
 }
+

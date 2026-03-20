@@ -886,11 +886,21 @@ function SectionHeader({
 export function OperationalPortal({
   onLogWorkSubmit,
   onNotifyPM,
+  engineerName,
 }: {
   onLogWorkSubmit?: (taskId: string, entry: Omit<LogWorkEntry, "id">) => void;
   onNotifyPM?: (notification: Omit<EngNotification, "id" | "read">) => void;
+  /** If provided, filters tasks to only those assigned to this engineer name */
+  engineerName?: string;
 }) {
-  const [profile] = useState<EngineerProfile>({ ...ENGINEER_PROFILE });
+  const [profile] = useState<EngineerProfile>(() => {
+    if (!engineerName || engineerName === ENGINEER_PROFILE.name) {
+      return { ...ENGINEER_PROFILE };
+    }
+    // For Priya Nair — adapt profile name/initials but keep same structure
+    const initials = engineerName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+    return { ...ENGINEER_PROFILE, name: engineerName, initials };
+  });
 
   // All tasks from all projects this engineer is assigned to
   const [allTasks, setAllTasks] = useState<(TaskCard & { projectId: string; projectName: string })[]>(() => {
@@ -899,7 +909,10 @@ export function OperationalPortal({
       const td = TACTICAL_DATA[proj.projectId];
       if (td) {
         td.tasks
-          .filter((t) => t.assigneeId === profile.memberId)
+          .filter((t) => {
+            if (engineerName) return t.assigneeName === engineerName;
+            return t.assigneeId === profile.memberId;
+          })
           .forEach((t) => result.push({ ...t, projectId: proj.projectId, projectName: proj.projectName }));
       }
     });

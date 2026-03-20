@@ -73,7 +73,7 @@ function memberInitials(name: string) {
 }
 
 function isReviewerRole(role: ViewRole): boolean {
-  return role === "PM" || role === "CTO";
+  return role === "PM";
 }
 
 // ─── Task Creation Modal (Odoo-style form) ────────────────────────────────────
@@ -521,11 +521,13 @@ function PhasePlanTab({
   onPhaseSave,
   onTaskClick,
   onSwitchToKanban,
+  canEdit = true,
 }: {
   tactical: TacticalProjectData;
   onPhaseSave: (phases: PhaseDefinition[]) => void;
   onTaskClick?: (task: TaskCard) => void;
   onSwitchToKanban?: (phase: Phase) => void;
+  canEdit?: boolean;
 }) {
   const [phases, setPhases]        = useState<PhaseDefinition[]>(tactical.phases);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -806,15 +808,17 @@ function PhasePlanTab({
             Total: {totalWeight}%
           </span>
 
-          {/* Add Phase button */}
-          <button
-            onClick={() => setShowAddPhaseModal(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
-            title="Add a new phase"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Phase
-          </button>
+          {/* Add Phase button — PM only */}
+          {canEdit && (
+            <button
+              onClick={() => setShowAddPhaseModal(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-lg px-3 py-1.5 hover:bg-primary/90 transition-colors"
+              title="Add a new phase"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Phase
+            </button>
+          )}
         </div>
       </div>
 
@@ -933,38 +937,42 @@ function PhasePlanTab({
                     </>
                   )}
 
-                  {/* Edit/Save button */}
-                  <button
-                    onClick={() => {
-                      if (isEditing) { onPhaseSave(phases); setEditingIdx(null); }
-                      else { setEditingIdx(idx); }
-                    }}
-                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  >
-                    {isEditing
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                      : <Pencil className="w-3.5 h-3.5" />
-                    }
-                  </button>
+                  {/* Edit/Save button — PM only */}
+                  {canEdit && (
+                    <button
+                      onClick={() => {
+                        if (isEditing) { onPhaseSave(phases); setEditingIdx(null); }
+                        else { setEditingIdx(idx); }
+                      }}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      {isEditing
+                        ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                        : <Pencil className="w-3.5 h-3.5" />
+                      }
+                    </button>
+                  )}
 
-                  {/* Phase status lock button — enabled only if all tasks are Done */}
-                  <button
-                    onClick={() => allTasksComplete && lockPhase(phase.phase)}
-                    disabled={!allTasksComplete}
-                    className={cn(
-                      "p-1.5 rounded-md transition-colors",
-                      allTasksComplete
-                        ? "text-green-600 hover:bg-green-50 cursor-pointer"
-                        : "text-muted-foreground/40 cursor-not-allowed"
-                    )}
-                    title={allTasksComplete ? "Lock this phase (all tasks Done)" : "Complete all tasks to lock phase"}
-                  >
-                    {lockedPhases.has(phase.phase) ? (
-                      <Lock className="w-3.5 h-3.5" />
-                    ) : (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+                  {/* Phase status lock button — PM only, enabled only if all tasks are Done */}
+                  {canEdit && (
+                    <button
+                      onClick={() => allTasksComplete && lockPhase(phase.phase)}
+                      disabled={!allTasksComplete}
+                      className={cn(
+                        "p-1.5 rounded-md transition-colors",
+                        allTasksComplete
+                          ? "text-green-600 hover:bg-green-50 cursor-pointer"
+                          : "text-muted-foreground/40 cursor-not-allowed"
+                      )}
+                      title={allTasksComplete ? "Lock this phase (all tasks Done)" : "Complete all tasks to lock phase"}
+                    >
+                      {lockedPhases.has(phase.phase) ? (
+                        <Lock className="w-3.5 h-3.5" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Expanded task table for this phase */}
@@ -1837,10 +1845,12 @@ function TimesheetTab({
   timesheets,
   lockedTaskIds,
   onApprove,
+  canApprove = true,
 }: {
   timesheets: TimesheetEntry[];
   lockedTaskIds: Set<string>;
   onApprove: (id: string) => void;
+  canApprove?: boolean;
 }) {
   const pending  = timesheets.filter((t) => !t.approved);
   const approved = timesheets.filter((t) => t.approved);
@@ -1893,7 +1903,7 @@ function TimesheetTab({
             <span className="inline-flex items-center gap-1 text-green-700 font-semibold">
               <CheckCheck className="w-3.5 h-3.5" /> Approved
             </span>
-          ) : (
+          ) : canApprove ? (
             <Button
               size="sm"
               onClick={() => onApprove(entry.id)}
@@ -1901,6 +1911,10 @@ function TimesheetTab({
             >
               Approve
             </Button>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-600 text-[10px] font-semibold">
+              Pending
+            </span>
           )}
         </td>
       </tr>
@@ -2128,12 +2142,10 @@ export function TacticalView({
         {activeTab === "phases" && (
           <PhasePlanTab
             tactical={tactical}
+            canEdit={role === "PM"}
             onPhaseSave={(phases) => onPhaseSave(project.id, phases)}
             onTaskClick={(task) => setSelectedTask(task)}
-            onSwitchToKanban={(phase) => {
-              setKanbanPhaseFilter(phase);
-              setActiveTab("kanban");
-            }}
+            onSwitchToKanban={(phase) => { setActiveTab("kanban"); setKanbanFilterPhase(phase); }}
           />
         )}
         {activeTab === "kanban" && (
@@ -2156,6 +2168,7 @@ export function TacticalView({
           <TimesheetTab
             timesheets={tactical.timesheets}
             lockedTaskIds={lockedTaskIds}
+            canApprove={role === "PM"}
             onApprove={(entryId) => onTimesheetApprove(project.id, entryId)}
           />
         )}
