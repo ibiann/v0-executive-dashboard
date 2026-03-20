@@ -9,10 +9,15 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { useLang } from "@/lib/i18n";
+import { useRouter } from "next/navigation";
 
 export type ViewRole = "CTO" | "PM" | "Engineer";
 
-const ROLES: ViewRole[] = ["CTO", "PM", "Engineer"];
+const ROLES: { role: ViewRole; href: string }[] = [
+  { role: "CTO",      href: "/cto"      },
+  { role: "PM",       href: "/pm/PRJ-001" },
+  { role: "Engineer", href: "/engineer" },
+];
 
 export interface BreadcrumbItem {
   label: string;
@@ -25,12 +30,18 @@ export function TopNav({
   breadcrumbs,
 }: {
   role: ViewRole;
-  setRole: (r: ViewRole) => void;
+  setRole?: (r: ViewRole) => void;
   breadcrumbs?: BreadcrumbItem[];
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { lang, setLang, t } = useLang();
+  const router = useRouter();
+
+  function handleRoleSwitch(r: ViewRole, href: string) {
+    setRole?.(r);
+    router.push(href);
+  }
 
   return (
     <header className="flex items-center justify-between gap-4 bg-card border-b border-border px-4 py-2.5 sticky top-0 z-30">
@@ -45,10 +56,10 @@ export function TopNav({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-36">
-              {ROLES.map((r) => (
+              {ROLES.map(({ role: r, href }) => (
                 <DropdownMenuItem
                   key={r}
-                  onClick={() => setRole(r)}
+                  onClick={() => handleRoleSwitch(r, href)}
                   className="cursor-pointer"
                 >
                   {r}
