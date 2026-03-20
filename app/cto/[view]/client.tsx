@@ -1,6 +1,6 @@
 "use client";
 
-import { notFound, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAppState } from "@/lib/app-state";
 import { QualityHealthWidget } from "@/components/dashboard/quality-health-widget";
 import { RiskManagementWidget } from "@/components/dashboard/risk-management-widget";
@@ -21,7 +21,13 @@ export default function CtoViewClient({ view }: { view: string }) {
   const router = useRouter();
   const { projects } = useAppState();
 
-  if (!META[view as StrategicViewParam]) notFound();
+  if (!META[view as StrategicViewParam]) {
+    return (
+      <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
+        View not found: {view}
+      </div>
+    );
+  }
 
   const meta           = META[view as StrategicViewParam];
   const closedProjects = projects.filter((p) => p.closed);
