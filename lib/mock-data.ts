@@ -172,8 +172,6 @@ export function formatReminderNotification(meeting: Meeting, reminderType: strin
   }
 }
 
-export interface OverdueTask {
-
 export interface HoursData {
   phase: Phase;
   planned: number;
