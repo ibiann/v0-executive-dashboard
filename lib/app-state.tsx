@@ -11,6 +11,7 @@ import {
   TacticalProjectData,
   EngNotification,
   DEFAULT_PHASE_WEIGHTS,
+  Meeting,
 } from "@/lib/mock-data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +26,10 @@ interface AppState {
   handleTasksChange: (projectId: string, tasks: TaskCard[]) => void;
   handlePmNotify: (notif: Omit<EngNotification, "id" | "read">) => void;
   handleCreateProject: (data: { name: string; pm: string; category: "Software" | "Hardware" | "FPGA" }) => string;
+  handleCreateMeeting: (projectId: string, meeting: Omit<Meeting, "id" | "createdAt" | "updatedAt">) => void;
+  handleUpdateMeeting: (projectId: string, meetingId: string, updates: Partial<Meeting>) => void;
+  handleDeleteMeeting: (projectId: string, meetingId: string) => void;
+  handleMoveMeeting: (projectId: string, meetingId: string, newDate: string) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -45,6 +50,10 @@ export function useAppState(): AppState {
       handleTasksChange:       () => {},
       handlePmNotify:          () => {},
       handleCreateProject:     () => "",
+      handleCreateMeeting:     () => {},
+      handleUpdateMeeting:     () => {},
+      handleDeleteMeeting:     () => {},
+      handleMoveMeeting:       () => {},
     };
   }
   return ctx;
@@ -139,11 +148,65 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       tasks: [],
       team: [],
       timesheets: [],
+      meetings: [],
     };
 
     setProjects((prev) => [...prev, newProject]);
     setTacticalData((prev) => ({ ...prev, [newProjectId]: newTacticalData }));
     return newProjectId;
+  }
+
+  function handleCreateMeeting(projectId: string, meeting: Omit<Meeting, "id" | "createdAt" | "updatedAt">) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td) return prev;
+
+      const newMeeting: Meeting = {
+        ...meeting,
+        id: `MTG-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const meetings = td.meetings ?? [];
+      return { ...prev, [projectId]: { ...td, meetings: [...meetings, newMeeting] } };
+    });
+  }
+
+  function handleUpdateMeeting(projectId: string, meetingId: string, updates: Partial<Meeting>) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td || !td.meetings) return prev;
+
+      const meetings = td.meetings.map((m) =>
+        m.id === meetingId ? { ...m, ...updates, updatedAt: new Date().toISOString() } : m
+      );
+
+      return { ...prev, [projectId]: { ...td, meetings } };
+    });
+  }
+
+  function handleDeleteMeeting(projectId: string, meetingId: string) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td || !td.meetings) return prev;
+
+      const meetings = td.meetings.filter((m) => m.id !== meetingId);
+      return { ...prev, [projectId]: { ...td, meetings } };
+    });
+  }
+
+  function handleMoveMeeting(projectId: string, meetingId: string, newDate: string) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td || !td.meetings) return prev;
+
+      const meetings = td.meetings.map((m) =>
+        m.id === meetingId ? { ...m, startDate: newDate, updatedAt: new Date().toISOString() } : m
+      );
+
+      return { ...prev, [projectId]: { ...td, meetings } };
+    });
   }
 
   return (
@@ -158,6 +221,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         handleTasksChange,
         handlePmNotify,
         handleCreateProject,
+        handleCreateMeeting,
+        handleUpdateMeeting,
+        handleDeleteMeeting,
+        handleMoveMeeting,
       }}
     >
       {children}

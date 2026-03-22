@@ -63,6 +63,47 @@ export interface TacticalProjectData {
   team: TeamMember[];
   tasks: TaskCard[];
   timesheets: TimesheetEntry[];
+  meetings?: Meeting[];
+}
+
+// ─── Meeting/Calendar Types ──────────────────────────────────────────────────
+
+export type MeetingType = "Họp tiến độ" | "Họp kỹ thuật" | "Họp đánh giá" | "Họp khẩn cấp" | "Khác";
+export type MeetingImportance = "Normal" | "Quan trọng";
+export type AttendeeStatus = "pending" | "accepted" | "declined" | "tentative";
+
+export interface RecurrencePattern {
+  frequency: "weekly" | "bi-weekly" | "monthly";
+  daysOfWeek?: number[]; // 0=Sunday, 6=Saturday
+  endCondition?: "no-limit" | "after-count" | "on-date";
+  endValue?: number | string; // count or date string
+}
+
+export interface MeetingAttendee {
+  memberId: string;
+  memberName: string;
+  status: AttendeeStatus;
+}
+
+export interface Meeting {
+  id: string;
+  projectId: string;
+  title: string;
+  phase?: Phase;
+  startDate: string; // ISO date string (YYYY-MM-DD)
+  startTime: string; // HH:MM format
+  endTime: string;
+  type: MeetingType;
+  importance: MeetingImportance;
+  attendees: MeetingAttendee[];
+  location?: string;
+  agenda?: string;
+  attachments?: Array<{ id: string; name: string; url: string }>;
+  recurring?: RecurrencePattern;
+  reminders: Array<"15min" | "1hour" | "1day" | "3days" | "1week">;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OverdueTask {
@@ -414,7 +455,7 @@ export const TEAM_VELOCITY: VelocityPoint[] = [
   { sprint: "S-24", fpga: 37, software: 52, hardware: 32 },
 ];
 
-// ─── Risk Management Data ─────────────────────────────────────────────────────
+// ─── Risk Management Data ─────────────────��───────────────────────────────────
 
 export type RiskSeverity = "critical" | "high" | "medium";
 export type RiskCategory = "security" | "hardware" | "schedule" | "resource";
@@ -709,6 +750,149 @@ export const HEATMAP_PROJECTS = [
   "Vortex Firmware Suite",
 ];
 
+// ─── Mock Meetings Data ───────────────────────────────────────────────────────
+
+const MOCK_MEETINGS: Record<string, Meeting[]> = {
+  "PRJ-001": [
+    {
+      id: "MTG-001",
+      projectId: "PRJ-001",
+      title: "Họp kiểm tra tiến độ tuần",
+      phase: "R&D",
+      startDate: "2026-03-22",
+      startTime: "09:00",
+      endTime: "10:00",
+      type: "Họp tiến độ",
+      importance: "Normal",
+      attendees: [
+        { memberId: "M-01", memberName: "Alice Morgan", status: "accepted" },
+        { memberId: "M-02", memberName: "Emma Watson", status: "accepted" },
+        { memberId: "M-03", memberName: "Frank Lee", status: "pending" },
+      ],
+      location: "Meeting Room A",
+      agenda: "Review FPGA synthesis progress, discuss timing violations, plan next week tasks",
+      reminders: ["15min", "1hour"],
+      recurring: { frequency: "weekly", daysOfWeek: [1], endCondition: "no-limit" },
+      createdAt: "2026-03-15T10:00:00Z",
+      updatedAt: "2026-03-15T10:00:00Z",
+    },
+    {
+      id: "MTG-002",
+      projectId: "PRJ-001",
+      title: "Họp kỹ thuật: Tối ưu hóa timing",
+      phase: "R&D",
+      startDate: "2026-03-24",
+      startTime: "14:00",
+      endTime: "15:30",
+      type: "Họp kỹ thuật",
+      importance: "Quan trọng",
+      attendees: [
+        { memberId: "M-02", memberName: "Emma Watson", status: "accepted" },
+        { memberId: "M-04", memberName: "Grace Kim", status: "accepted" },
+        { memberId: "M-05", memberName: "Henry Zhang", status: "tentative" },
+      ],
+      location: "Zoom",
+      agenda: "Deep dive into timing closure strategies, review alternative approaches",
+      attachments: [
+        { id: "ATT-001", name: "timing_analysis.pdf", url: "#" },
+        { id: "ATT-002", name: "optimization_report.xlsx", url: "#" },
+      ],
+      reminders: ["1hour", "1day"],
+      createdAt: "2026-03-18T09:30:00Z",
+      updatedAt: "2026-03-18T09:30:00Z",
+    },
+    {
+      id: "MTG-003",
+      projectId: "PRJ-001",
+      title: "Họp đánh giá kết thúc sprint",
+      phase: "Test",
+      startDate: "2026-03-29",
+      startTime: "11:00",
+      endTime: "12:00",
+      type: "Họp đánh giá",
+      importance: "Normal",
+      attendees: [
+        { memberId: "M-01", memberName: "Alice Morgan", status: "accepted" },
+        { memberId: "M-02", memberName: "Emma Watson", status: "accepted" },
+        { memberId: "M-03", memberName: "Frank Lee", status: "accepted" },
+        { memberId: "M-04", memberName: "Grace Kim", status: "accepted" },
+      ],
+      location: "Meeting Room B",
+      agenda: "Sprint retrospective, burn-down review, planning for next sprint",
+      reminders: ["15min"],
+      createdAt: "2026-03-20T08:00:00Z",
+      updatedAt: "2026-03-20T08:00:00Z",
+    },
+  ],
+  "PRJ-002": [
+    {
+      id: "MTG-004",
+      projectId: "PRJ-002",
+      title: "Họp khẩn cấp: Vấn đề authentication module",
+      phase: "R&D",
+      startDate: "2026-03-22",
+      startTime: "15:00",
+      endTime: "16:00",
+      type: "Họp khẩn cấp",
+      importance: "Quan trọng",
+      attendees: [
+        { memberId: "M-06", memberName: "Bob Chen", status: "accepted" },
+        { memberId: "M-07", memberName: "Iris Johnson", status: "accepted" },
+        { memberId: "M-08", memberName: "Jack Martinez", status: "accepted" },
+      ],
+      location: "Zoom",
+      agenda: "Address critical security review findings in API gateway auth module",
+      notes: "Escalated from L. Tan review comments",
+      reminders: ["15min", "1hour"],
+      createdAt: "2026-03-21T16:00:00Z",
+      updatedAt: "2026-03-21T16:00:00Z",
+    },
+    {
+      id: "MTG-005",
+      projectId: "PRJ-002",
+      title: "Họp tiến độ hàng tuần",
+      phase: "Test",
+      startDate: "2026-03-23",
+      startTime: "10:00",
+      endTime: "11:00",
+      type: "Họp tiến độ",
+      importance: "Normal",
+      attendees: [
+        { memberId: "M-06", memberName: "Bob Chen", status: "accepted" },
+        { memberId: "M-07", memberName: "Iris Johnson", status: "accepted" },
+        { memberId: "M-08", memberName: "Jack Martinez", status: "pending" },
+      ],
+      location: "Meeting Room A",
+      agenda: "Weekly standup, blockers discussion, resource updates",
+      reminders: ["1day"],
+      recurring: { frequency: "weekly", daysOfWeek: [1], endCondition: "no-limit" },
+      createdAt: "2026-03-16T09:00:00Z",
+      updatedAt: "2026-03-16T09:00:00Z",
+    },
+  ],
+};
+
+// ─── Helper Functions for Meetings ────────────────────────────────────────────
+
+export function getMeetingsForProject(projectId: string): Meeting[] {
+  return MOCK_MEETINGS[projectId] ?? [];
+}
+
+export function getUpcomingMeetings(projectId: string, count: number): Meeting[] {
+  const meetings = MOCK_MEETINGS[projectId] ?? [];
+  const today = new Date();
+  return meetings
+    .filter((m) => new Date(m.startDate) >= today)
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+    .slice(0, count);
+}
+
+export function getMeetingsByDate(projectId: string, date: Date): Meeting[] {
+  const meetings = MOCK_MEETINGS[projectId] ?? [];
+  const dateStr = date.toISOString().split("T")[0];
+  return meetings.filter((m) => m.startDate === dateStr);
+}
+
 // ─── Tactical Data per Project ────────────────────────────────────────────────
 
 export const TACTICAL_DATA: Record<string, TacticalProjectData> = {
@@ -720,6 +904,7 @@ export const TACTICAL_DATA: Record<string, TacticalProjectData> = {
       { phase: "Test",    startDate: "2025-11-01", endDate: "2026-04-30", weight: 25 },
       { phase: "Release", startDate: "2026-05-01", endDate: "2026-06-30", weight: 10 },
     ],
+    meetings: getMeetingsForProject("PRJ-001"),
     team: [
       { id: "M-01", name: "James Hart",    initials: "JH", role: "FPGA Engineer",    department: "FPGA",     activeTasks: 3 },
       { id: "M-02", name: "Maria Russo",   initials: "MR", role: "Signal Engineer",  department: "FPGA",     activeTasks: 2 },
@@ -763,6 +948,7 @@ export const TACTICAL_DATA: Record<string, TacticalProjectData> = {
       { phase: "Test",    startDate: "2025-12-01", endDate: "2026-03-01", weight: 30 },
       { phase: "Release", startDate: "2026-03-02", endDate: "2026-04-15", weight: 15 },
     ],
+    meetings: getMeetingsForProject("PRJ-002"),
     team: [
       { id: "M-05", name: "Linda Tan",    initials: "LT", role: "Backend Engineer",  department: "Software", activeTasks: 4 },
       { id: "M-06", name: "Sam Brooks",   initials: "SB", role: "QA Engineer",       department: "Software", activeTasks: 3 },
