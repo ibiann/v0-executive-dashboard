@@ -932,7 +932,6 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
       createdAt: "2026-03-16T09:00:00Z",
       updatedAt: "2026-03-16T09:00:00Z",
     },
-    },
   ],
 };
 
