@@ -1,7 +1,6 @@
 "use client";
 
 import { Meeting } from "@/lib/mock-data";
-import { getMeetingsWithinHours } from "@/lib/meeting-reminders";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,29 +8,45 @@ import { AlertCircle, Clock, X, MapPin } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface UpcomingMeetingBannerProps {
-  meetings: Meeting[];
+  meeting: Meeting & { projectName?: string };
+  projectName?: string;
+  onDismiss?: () => void;
   onMeetingClick?: (meeting: Meeting) => void;
-  hoursWindow?: number;
 }
 
 export function UpcomingMeetingBanner({
-  meetings,
+  meeting,
+  projectName,
+  onDismiss,
   onMeetingClick,
-  hoursWindow = 2,
 }: UpcomingMeetingBannerProps) {
-  const [upcomingMeeting, setUpcomingMeeting] = useState<Meeting | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<string>("");
 
   useEffect(() => {
-    const upcomingMeetings = getMeetingsWithinHours(meetings, hoursWindow);
-    if (upcomingMeetings.length > 0) {
-      setUpcomingMeeting(upcomingMeetings[0]);
-    }
-  }, [meetings, hoursWindow]);
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      const meetingTime = new Date(`${meeting.startDate}T${meeting.startTime}:00`);
+      const diff = meetingTime.getTime() - now.getTime();
 
-  if (!upcomingMeeting || dismissed) {
-    return null;
-  }
+      if (diff <= 0) {
+        setTimeLeft("đang diễn ra");
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (hours > 0) {
+        setTimeLeft(`còn ${hours} giờ ${minutes} phút`);
+      } else {
+        setTimeLeft(`còn ${minutes} phút`);
+      }
+    };
+
+    calculateTimeLeft();
+    const interval = setInterval(calculateTimeLeft, 60000);
+    return () => clearInterval(interval);
+  }, [meeting]);
 
   return (
     <Card className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 p-4 mb-6">
@@ -44,9 +59,9 @@ export function UpcomingMeetingBanner({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-sm font-semibold text-gray-900">
-                {upcomingMeeting.title}
+                📅 Tiếp theo: {meeting.title}
               </h3>
-              {upcomingMeeting.importance === "Quan trọng" && (
+              {meeting.importance === "Quan trọng" && (
                 <Badge className="bg-orange-100 text-orange-700 text-xs">
                   Quan trọng
                 </Badge>
@@ -57,30 +72,22 @@ export function UpcomingMeetingBanner({
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-gray-500" />
                 <span>
-                  {upcomingMeeting.startTime} -{" "}
-                  {upcomingMeeting.endTime}
+                  Lúc {meeting.startTime} tại {meeting.location || "TBD"} – {timeLeft}
                 </span>
               </div>
 
-              {upcomingMeeting.location && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-gray-500" />
-                  <span>{upcomingMeeting.location}</span>
-                </div>
+              {meeting.agenda && (
+                <p className="text-xs text-gray-600 line-clamp-1">
+                  {meeting.agenda}
+                </p>
               )}
             </div>
-
-            {upcomingMeeting.agenda && (
-              <p className="text-xs text-gray-600 line-clamp-2 mb-3">
-                {upcomingMeeting.agenda}
-              </p>
-            )}
 
             <Button
               size="sm"
               variant="outline"
               className="text-xs h-7"
-              onClick={() => onMeetingClick?.(upcomingMeeting)}
+              onClick={() => onMeetingClick?.(meeting)}
             >
               Xem chi tiết
             </Button>
@@ -88,7 +95,7 @@ export function UpcomingMeetingBanner({
         </div>
 
         <button
-          onClick={() => setDismissed(true)}
+          onClick={() => onDismiss?.()}
           className="mt-0.5 p-1 hover:bg-blue-100 rounded transition-colors flex-shrink-0"
           aria-label="Đóng"
         >
