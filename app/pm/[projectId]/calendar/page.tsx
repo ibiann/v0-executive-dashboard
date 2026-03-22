@@ -1,3 +1,5 @@
+"use client";
+
 import { CalendarMeetingContainer } from "@/components/pm-workspace/calendar-meeting-container";
 import { useAppState } from "@/lib/app-state";
 
