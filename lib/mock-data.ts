@@ -132,16 +132,7 @@ export interface NotificationPreference {
 
 // ─── Meeting Status & Reminder Helpers ───────────────────────────────────────
 
-export function calculateMeetingStatus(meeting: Meeting, currentTime: Date = new Date()): MeetingStatus {
-  if (meeting.status === "Đã hủy") return "Đã hủy";
-  
-  const meetingDate = new Date(`${meeting.startDate}T${meeting.startTime}:00`);
-  const endDate = new Date(`${meeting.startDate}T${meeting.endTime}:00`);
-  
-  if (currentTime < meetingDate) return "Sắp diễn ra";
-  if (currentTime >= meetingDate && currentTime < endDate) return "Đang diễn ra";
-  return "Đã kết thúc";
-}
+// Note: calculateMeetingStatus is exported from lib/meeting-reminders.ts
 
 export function getUpcomingReminders(meetings: Meeting[], currentTime: Date = new Date()): Meeting[] {
   return meetings

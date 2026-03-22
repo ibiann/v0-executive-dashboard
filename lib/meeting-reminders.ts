@@ -1,4 +1,4 @@
-import { Meeting, NotificationPreference } from "@/lib/mock-data";
+import { Meeting, NotificationPreference, MeetingStatus } from "@/lib/mock-data";
 
 export type ReminderType = "1day" | "1hour" | "15min" | "at-time" | "daily-digest";
 
@@ -8,6 +8,20 @@ export interface ReminderTrigger {
   reminderType: ReminderType;
   triggerTime: Date;
   message: string;
+}
+
+/**
+ * Calculate the current status of a meeting based on current time
+ */
+export function calculateMeetingStatus(meeting: Meeting, currentTime: Date = new Date()): MeetingStatus {
+  if (meeting.status === "Đã hủy") return "Đã hủy";
+  
+  const meetingDate = new Date(`${meeting.startDate}T${meeting.startTime}:00`);
+  const endDate = new Date(`${meeting.startDate}T${meeting.endTime}:00`);
+  
+  if (currentTime < meetingDate) return "Sắp diễn ra";
+  if (currentTime >= meetingDate && currentTime < endDate) return "Đang diễn ra";
+  return "Đã kết thúc";
 }
 
 /**
