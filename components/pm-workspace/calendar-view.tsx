@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Meeting } from "@/lib/mock-data";
+import { MeetingStatusIndicator, CompactMeetingStatus } from "@/components/pm-workspace/meeting-status-indicator";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
 import { vi } from "date-fns/locale";
 

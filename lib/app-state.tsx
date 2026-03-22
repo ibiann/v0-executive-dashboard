@@ -26,10 +26,12 @@ interface AppState {
   handleTasksChange: (projectId: string, tasks: TaskCard[]) => void;
   handlePmNotify: (notif: Omit<EngNotification, "id" | "read">) => void;
   handleCreateProject: (data: { name: string; pm: string; category: "Software" | "Hardware" | "FPGA" }) => string;
-  handleCreateMeeting: (projectId: string, meeting: Omit<Meeting, "id" | "createdAt" | "updatedAt">) => void;
+  handleCreateMeeting: (projectId: string, meeting: Omit<Meeting, "id" | "status" | "createdAt" | "updatedAt">) => void;
   handleUpdateMeeting: (projectId: string, meetingId: string, updates: Partial<Meeting>) => void;
   handleDeleteMeeting: (projectId: string, meetingId: string) => void;
   handleMoveMeeting: (projectId: string, meetingId: string, newDate: string) => void;
+  handleCancelMeeting: (projectId: string, meetingId: string, cancelledBy: string) => void;
+  handleAddMeetingNotes: (projectId: string, meetingId: string, notes: string) => void;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -54,6 +56,8 @@ export function useAppState(): AppState {
       handleUpdateMeeting:     () => {},
       handleDeleteMeeting:     () => {},
       handleMoveMeeting:       () => {},
+      handleCancelMeeting:     () => {},
+      handleAddMeetingNotes:   () => {},
     };
   }
   return ctx;
@@ -209,6 +213,53 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function handleCancelMeeting(projectId: string, meetingId: string, cancelledBy: string) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td || !td.meetings) return prev;
+
+      const meetings = td.meetings.map((m) =>
+        m.id === meetingId
+          ? {
+              ...m,
+              status: "Đã hủy" as const,
+              cancelledBy,
+              updatedAt: new Date().toISOString(),
+            }
+          : m
+      );
+
+      // Add notification for cancellation
+      handlePmNotify({
+        type: "MEETING_CANCELLED",
+        title: "Cuộc họp đã bị hủy",
+        message: `${cancelledBy} đã hủy cuộc họp`,
+        timestamp: new Date().toISOString(),
+      });
+
+      return { ...prev, [projectId]: { ...td, meetings } };
+    });
+  }
+
+  function handleAddMeetingNotes(projectId: string, meetingId: string, notes: string) {
+    setTacticalData((prev) => {
+      const td = prev[projectId];
+      if (!td || !td.meetings) return prev;
+
+      const meetings = td.meetings.map((m) =>
+        m.id === meetingId
+          ? {
+              ...m,
+              notes,
+              updatedAt: new Date().toISOString(),
+            }
+          : m
+      );
+
+      return { ...prev, [projectId]: { ...td, meetings } };
+    });
+  }
+
   return (
     <AppStateContext.Provider
       value={{
@@ -225,6 +276,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
         handleUpdateMeeting,
         handleDeleteMeeting,
         handleMoveMeeting,
+        handleCancelMeeting,
+        handleAddMeetingNotes,
       }}
     >
       {children}

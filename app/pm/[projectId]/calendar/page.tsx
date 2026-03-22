@@ -5,7 +5,15 @@ import { useAppState } from "@/lib/app-state";
 
 export default function CalendarPage({ params }: { params: { projectId: string } }) {
   const { projectId } = params;
-  const { projects, tacticalData, handleCreateMeeting, handleUpdateMeeting, handleDeleteMeeting } = useAppState();
+  const {
+    projects,
+    tacticalData,
+    handleCreateMeeting,
+    handleUpdateMeeting,
+    handleDeleteMeeting,
+    handleCancelMeeting,
+    handleAddMeetingNotes,
+  } = useAppState();
 
   const project = projects.find((p) => p.id === projectId);
   const data = tacticalData[projectId];
@@ -32,6 +40,8 @@ export default function CalendarPage({ params }: { params: { projectId: string }
         onCreateMeeting={(meeting) => handleCreateMeeting(projectId, meeting)}
         onUpdateMeeting={(pId, mId, updates) => handleUpdateMeeting(pId, mId, updates)}
         onDeleteMeeting={(pId, mId) => handleDeleteMeeting(pId, mId)}
+        onCancelMeeting={(pId, mId, by) => handleCancelMeeting(pId, mId, by)}
+        onAddMeetingNotes={(pId, mId, notes) => handleAddMeetingNotes(pId, mId, notes)}
       />
     </div>
   );

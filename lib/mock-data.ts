@@ -71,6 +71,7 @@ export interface TacticalProjectData {
 export type MeetingType = "Họp tiến độ" | "Họp kỹ thuật" | "Họp đánh giá" | "Họp khẩn cấp" | "Khác";
 export type MeetingImportance = "Normal" | "Quan trọng";
 export type AttendeeStatus = "pending" | "accepted" | "declined" | "tentative";
+export type MeetingStatus = "Sắp diễn ra" | "Đang diễn ra" | "Đã kết thúc" | "Đã hủy";
 
 export interface RecurrencePattern {
   frequency: "weekly" | "bi-weekly" | "monthly";
@@ -102,6 +103,9 @@ export interface Meeting {
   recurring?: RecurrencePattern;
   reminders: Array<"15min" | "1hour" | "1day" | "3days" | "1week">;
   notes?: string;
+  status: MeetingStatus;
+  cancelledBy?: string;
+  googleMeetLink?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,9 +114,65 @@ export interface OverdueTask {
   id: string;
   title: string;
   assignee: string;
-  dueSince: string; // days overdue as string, e.g. "3 days"
-  severity: "high" | "medium" | "low";
 }
+
+// ─── Notification Preferences ────────────────────────────────────────────────
+
+export interface NotificationPreference {
+  userId: string;
+  meetingReminders: {
+    oneDay: boolean;
+    oneHour: boolean;
+    fifteenMin: boolean;
+    atTime: boolean;
+    dailyDigest: boolean;
+  };
+  updatedAt: string;
+}
+
+// ─── Meeting Status & Reminder Helpers ───────────────────────────────────────
+
+export function calculateMeetingStatus(meeting: Meeting, currentTime: Date = new Date()): MeetingStatus {
+  if (meeting.status === "Đã hủy") return "Đã hủy";
+  
+  const meetingDate = new Date(`${meeting.startDate}T${meeting.startTime}:00`);
+  const endDate = new Date(`${meeting.startDate}T${meeting.endTime}:00`);
+  
+  if (currentTime < meetingDate) return "Sắp diễn ra";
+  if (currentTime >= meetingDate && currentTime < endDate) return "Đang diễn ra";
+  return "Đã kết thúc";
+}
+
+export function getUpcomingReminders(meetings: Meeting[], currentTime: Date = new Date()): Meeting[] {
+  return meetings
+    .filter((m) => {
+      const status = calculateMeetingStatus(m, currentTime);
+      return status === "Sắp diễn ra";
+    })
+    .sort((a, b) => {
+      const timeA = new Date(`${a.startDate}T${a.startTime}:00`).getTime();
+      const timeB = new Date(`${b.startDate}T${b.startTime}:00`).getTime();
+      return timeA - timeB;
+    });
+}
+
+export function formatReminderNotification(meeting: Meeting, reminderType: string): string {
+  const time = meeting.startTime;
+  switch (reminderType) {
+    case "1day":
+      return `Nhắc nhở: ${meeting.title} diễn ra vào ngày mai lúc ${time}`;
+    case "1hour":
+      return `Nhắc nhở: ${meeting.title} bắt đầu trong 1 giờ`;
+    case "15min":
+      return `Nhắc nhở: ${meeting.title} bắt đầu trong 15 phút`;
+    case "at-time":
+      return `${meeting.title} đang bắt đầu`;
+    default:
+      return `Nhắc nhở về cuộc họp: ${meeting.title}`;
+  }
+}
+
+export interface OverdueTask {
 
 export interface HoursData {
   phase: Phase;
@@ -773,6 +833,7 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
       agenda: "Review FPGA synthesis progress, discuss timing violations, plan next week tasks",
       reminders: ["15min", "1hour"],
       recurring: { frequency: "weekly", daysOfWeek: [1], endCondition: "no-limit" },
+      status: "Sắp diễn ra",
       createdAt: "2026-03-15T10:00:00Z",
       updatedAt: "2026-03-15T10:00:00Z",
     },
@@ -798,6 +859,7 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
         { id: "ATT-002", name: "optimization_report.xlsx", url: "#" },
       ],
       reminders: ["1hour", "1day"],
+      status: "Sắp diễn ra",
       createdAt: "2026-03-18T09:30:00Z",
       updatedAt: "2026-03-18T09:30:00Z",
     },
@@ -820,6 +882,7 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
       location: "Meeting Room B",
       agenda: "Sprint retrospective, burn-down review, planning for next sprint",
       reminders: ["15min"],
+      status: "Sắp diễn ra",
       createdAt: "2026-03-20T08:00:00Z",
       updatedAt: "2026-03-20T08:00:00Z",
     },
@@ -844,6 +907,7 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
       agenda: "Address critical security review findings in API gateway auth module",
       notes: "Escalated from L. Tan review comments",
       reminders: ["15min", "1hour"],
+      status: "Sắp diễn ra",
       createdAt: "2026-03-21T16:00:00Z",
       updatedAt: "2026-03-21T16:00:00Z",
     },
@@ -866,8 +930,10 @@ const MOCK_MEETINGS: Record<string, Meeting[]> = {
       agenda: "Weekly standup, blockers discussion, resource updates",
       reminders: ["1day"],
       recurring: { frequency: "weekly", daysOfWeek: [1], endCondition: "no-limit" },
+      status: "Sắp diễn ra",
       createdAt: "2026-03-16T09:00:00Z",
       updatedAt: "2026-03-16T09:00:00Z",
+    },
     },
   ],
 };

@@ -16,9 +16,11 @@ interface CalendarMeetingContainerProps {
   meetings: Meeting[];
   phases: string[];
   teamMembers: Array<{ id: string; name: string; initials: string; role: string; department: string; activeTasks: number }>;
-  onCreateMeeting: (meeting: Omit<Meeting, "id" | "createdAt" | "updatedAt">) => void;
+  onCreateMeeting: (meeting: Omit<Meeting, "id" | "status" | "createdAt" | "updatedAt">) => void;
   onUpdateMeeting: (projectId: string, meetingId: string, updates: Partial<Meeting>) => void;
   onDeleteMeeting: (projectId: string, meetingId: string) => void;
+  onCancelMeeting?: (projectId: string, meetingId: string, cancelledBy: string) => void;
+  onAddMeetingNotes?: (projectId: string, meetingId: string, notes: string) => void;
 }
 
 export function CalendarMeetingContainer({
@@ -30,6 +32,8 @@ export function CalendarMeetingContainer({
   onCreateMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
+  onCancelMeeting,
+  onAddMeetingNotes,
 }: CalendarMeetingContainerProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -121,6 +125,8 @@ export function CalendarMeetingContainer({
         open={showEventPopup}
         onOpenChange={setShowEventPopup}
         onDelete={handleDeleteMeeting}
+        onCancel={onCancelMeeting ? (id, by) => onCancelMeeting(projectId, id, by) : undefined}
+        onAddNotes={onAddMeetingNotes ? (id, notes) => onAddMeetingNotes(projectId, id, notes) : undefined}
         onEdit={(meeting) => {
           // Edit functionality can be added later
           toast.info("Chức năng chỉnh sửa sẽ được cập nhật");
