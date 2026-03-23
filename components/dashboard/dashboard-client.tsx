@@ -212,50 +212,106 @@ export function DashboardClient() {
       default:
         return (
           <>
-            {/* KPI row */}
+            {/* Welcome bar */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+              <div>
+                <h1 className="text-lg font-semibold text-foreground">
+                  {user?.role === "Chairman" ? "Ban điều hành" : "Tổng quan danh mục"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chào {user?.name?.split(" ").pop()}, hôm nay có{" "}
+                  <span className={redCount + amberCount > 0 ? "text-danger font-semibold" : "text-success font-semibold"}>
+                    {redCount + amberCount} vấn đề
+                  </span>{" "}
+                  cần chú ý
+                </p>
+              </div>
+            </div>
+
+            {/* KPI row — role-aware */}
             <section
-              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6"
               aria-label="Key Performance Indicators"
             >
-              <KpiCard
-                title="Sức khỏe danh mục"
-                value={`${portfolioHealth}%`}
-                subtitle="Tiến độ so với thời gian"
-                trend={portfolioHealth >= 90 ? "up" : portfolioHealth >= 75 ? "neutral" : "down"}
-                trendLabel={portfolioHealth >= 90 ? "Tốt" : portfolioHealth >= 75 ? "Trung bình" : "Cần chú ý"}
-                icon={<Activity className="w-4 h-4" />}
-                highlight
-              />
-              <KpiCard
-                title="Tổng dự án hoạt động"
-                value={activeProjects.length}
-                subtitle={`${greenCount} đúng hạn · ${amberCount} có rủi ro · ${redCount} trễ hạn`}
-                trend="neutral"
-                trendLabel={`${closedProjects.length} đã đóng`}
-                icon={<Layers className="w-4 h-4" />}
-              />
-              <KpiCard
-                title="Sức khỏe tiến độ"
-                value={`${Math.round(activeSPI * 100)}%`}
-                subtitle={`${activeProjects.filter((p) => p.ragStatus !== "red").length}/${activeProjects.length} dự án đúng hạn`}
-                trend={activeSPI >= 0.8 ? "up" : activeSPI >= 0.6 ? "neutral" : "down"}
-                trendLabel={
-                  activeSPI >= 0.8
-                    ? "— Tốt"
-                    : activeSPI >= 0.6
-                    ? "— Trung bình"
-                    : "— Nghiêm trọng"
-                }
-                icon={<Gauge className="w-4 h-4" />}
-              />
-              <KpiCard
-                title="Hiệu suất nguồn lực"
-                value={`${resourceEff}%`}
-                subtitle="Tổng hợp từ chấm công kỹ sư"
-                trend={resourceEff >= 85 ? "up" : resourceEff >= 70 ? "neutral" : "down"}
-                trendLabel={resourceEff >= 85 ? "Hiệu quả" : "Cần xem xét"}
-                icon={<Users className="w-4 h-4" />}
-              />
+              {user?.role === "Chairman" ? (
+                <>
+                  <KpiCard
+                    title="Tổng dự án"
+                    value={activeProjects.length}
+                    subtitle={`${greenCount} đúng hạn · ${amberCount} rủi ro · ${redCount} trễ hạn`}
+                    trend="neutral"
+                    trendLabel={`${closedProjects.length} đã đóng`}
+                    icon={<Layers className="w-4 h-4" />}
+                  />
+                  <KpiCard
+                    title="Ngân sách"
+                    value="78%"
+                    subtitle="9.36 / 12 tỷ VNĐ đã sử dụng"
+                    trend={78 <= 80 ? "up" : "down"}
+                    trendLabel={78 <= 80 ? "Trong kế hoạch" : "Vượt kế hoạch"}
+                    icon={<Activity className="w-4 h-4" />}
+                    highlight
+                  />
+                  <KpiCard
+                    title="Nhân sự"
+                    value="28/35"
+                    subtitle="80% đang hoạt động"
+                    trend="neutral"
+                    trendLabel="3 cần chú ý"
+                    icon={<Users className="w-4 h-4" />}
+                  />
+                  <KpiCard
+                    title="Tiến độ chung"
+                    value={`${portfolioHealth}%`}
+                    subtitle={`${activeProjects.filter((p) => p.ragStatus !== "red").length}/${activeProjects.length} dự án đúng hạn`}
+                    trend={portfolioHealth >= 80 ? "up" : "down"}
+                    trendLabel={portfolioHealth >= 80 ? "Tốt" : "Cần chú ý"}
+                    icon={<Gauge className="w-4 h-4" />}
+                  />
+                </>
+              ) : (
+                <>
+                  <KpiCard
+                    title="Sức khỏe danh mục"
+                    value={`${portfolioHealth}%`}
+                    subtitle="Tiến độ so với thời gian"
+                    trend={portfolioHealth >= 90 ? "up" : portfolioHealth >= 75 ? "neutral" : "down"}
+                    trendLabel={portfolioHealth >= 90 ? "Tốt" : portfolioHealth >= 75 ? "Trung bình" : "Cần chú ý"}
+                    icon={<Activity className="w-4 h-4" />}
+                    highlight
+                  />
+                  <KpiCard
+                    title="Tổng dự án hoạt động"
+                    value={activeProjects.length}
+                    subtitle={`${greenCount} đúng hạn · ${amberCount} có rủi ro · ${redCount} trễ hạn`}
+                    trend="neutral"
+                    trendLabel={`${closedProjects.length} đã đóng`}
+                    icon={<Layers className="w-4 h-4" />}
+                  />
+                  <KpiCard
+                    title="Sức khỏe tiến độ"
+                    value={`${Math.round(activeSPI * 100)}%`}
+                    subtitle={`${activeProjects.filter((p) => p.ragStatus !== "red").length}/${activeProjects.length} dự án đúng hạn`}
+                    trend={activeSPI >= 0.8 ? "up" : activeSPI >= 0.6 ? "neutral" : "down"}
+                    trendLabel={
+                      activeSPI >= 0.8
+                        ? "— Tốt"
+                        : activeSPI >= 0.6
+                        ? "— Trung bình"
+                        : "— Nghiêm trọng"
+                    }
+                    icon={<Gauge className="w-4 h-4" />}
+                  />
+                  <KpiCard
+                    title="Hiệu suất nguồn lực"
+                    value={`${resourceEff}%`}
+                    subtitle="Tổng hợp từ chấm công kỹ sư"
+                    trend={resourceEff >= 85 ? "up" : resourceEff >= 70 ? "neutral" : "down"}
+                    trendLabel={resourceEff >= 85 ? "Hiệu quả" : "Cần xem xét"}
+                    icon={<Users className="w-4 h-4" />}
+                  />
+                </>
+              )}
             </section>
 
             <PortfolioTable

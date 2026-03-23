@@ -14,15 +14,17 @@ import { useLang } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useAuth, type AuthRole } from "@/lib/auth";
 
-export type ViewRole = "CTO" | "PM" | "Engineer";
+export type ViewRole = "Chairman" | "CTO" | "PM" | "Engineer";
 
 const ROLE_BADGE: Record<ViewRole, { label: string; className: string }> = {
+  Chairman: { label: "TGĐ",   className: "bg-purple-600 text-white border border-purple-700"     },
   CTO:      { label: "CTO",   className: "bg-blue-100 text-blue-700 border border-blue-200"    },
   PM:       { label: "PM",    className: "bg-green-100 text-green-700 border border-green-200" },
   Engineer: { label: "Ky su", className: "bg-amber-100 text-amber-700 border border-amber-200" },
 };
 
 const DEMO_SWITCH: { role: AuthRole; href: string; label: string }[] = [
+  { role: "Chairman", href: "/cto",         label: "TGĐ — Đỗ Mạnh Hùng"      },
   { role: "CTO",      href: "/cto",         label: "CTO — Nguyễn Văn Thành" },
   { role: "PM",       href: "/pm/PRJ-001",  label: "PM — Alice Morgan"       },
   { role: "Engineer", href: "/engineer",    label: "KS — James Hart"         },
