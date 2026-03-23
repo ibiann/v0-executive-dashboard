@@ -19,8 +19,6 @@ export const T = {
     progress: "Tiến độ (%)",
     plannedHours: "Định mức giờ",
     actualHours: "Giờ thực tế",
-    taskId: "Mã nhiệm vụ",
-    description: "Chi tiết kỹ thuật / Kết quả",
     variance: "Chênh lệch",
     // Actions
     logWork: "Ghi nhận công việc",
@@ -90,8 +88,6 @@ export const T = {
     progress: "Progress (%)",
     plannedHours: "Planned Hours",
     actualHours: "Actual Hours",
-    taskId: "Task ID",
-    description: "Technical Details / Results",
     variance: "Variance",
     logWork: "Log Work",
     finishReview: "Finish & Review",

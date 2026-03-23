@@ -235,16 +235,16 @@ export function DashboardClient() {
                 icon={<Layers className="w-4 h-4" />}
               />
               <KpiCard
-                title="Schedule Health"
-                value={`${Math.round(activeSPI * 100)}%`}
-                subtitle={`${activeProjects.filter((p) => p.ragStatus !== "red").length}/${activeProjects.length} dự án đúng hạn`}
-                trend={activeSPI >= 0.8 ? "up" : activeSPI >= 0.6 ? "neutral" : "down"}
+                title="Global SPI"
+                value={activeSPI.toFixed(2)}
+                subtitle="Schedule Performance Index"
+                trend={activeSPI >= 1 ? "up" : activeSPI >= 0.85 ? "neutral" : "down"}
                 trendLabel={
-                  activeSPI >= 0.8
-                    ? "— Good"
-                    : activeSPI >= 0.6
-                    ? "— Moderate"
-                    : "— Critical"
+                  activeSPI >= 1
+                    ? "Ahead of schedule"
+                    : activeSPI >= 0.85
+                    ? "Slightly behind"
+                    : "Behind schedule"
                 }
                 icon={<Gauge className="w-4 h-4" />}
               />

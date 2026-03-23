@@ -6,7 +6,7 @@ import {
   Play, Pause, CheckCircle, AlertTriangle, Clock,
   ChevronRight, X, CalendarDays, Timer, FileEdit,
   SlidersHorizontal, LogOut, Plus, Check, Lock,
-  Briefcase, ArrowLeft, Filter, Loader2, CheckCircle2,
+  Briefcase, ArrowLeft, Filter,
 } from "lucide-react";
 import {
   TACTICAL_DATA,
@@ -196,98 +196,24 @@ function LogWorkModal({
   const [description, setDescription] = useState("");
   const [progress, setProgress]       = useState(isFinalLog ? 100 : currentProgress);
 
-  // Submission states — only used when isFinalLog=true
-  type SubmitState = "idle" | "loading" | "success" | "error";
-  const [submitState, setSubmitState] = useState<SubmitState>("idle");
-
-  // Auto-close timer ref
-  const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (autoCloseRef.current) clearTimeout(autoCloseRef.current); }, []);
-
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!hours || Number(hours) <= 0) return;
     if (!description.trim()) return;
-
-    if (isFinalLog) {
-      setSubmitState("loading");
-      // Simulate async API call — 10% chance of error for error-state demo
-      await new Promise<void>((resolve, reject) =>
-        setTimeout(() => (Math.random() < 0.1 ? reject() : resolve()), 1500)
-      ).then(() => {
-        onSave({
-          taskId: task.id,
-          taskTitle: task.title,
-          date,
-          loggedHours: Number(hours),
-          description: description.trim(),
-          progressPercent: progress,
-        });
-        setSubmitState("success");
-        autoCloseRef.current = setTimeout(onClose, 2000);
-      }).catch(() => {
-        setSubmitState("error");
-      });
-    } else {
-      onSave({
-        taskId: task.id,
-        taskTitle: task.title,
-        date,
-        loggedHours: Number(hours),
-        description: description.trim(),
-        progressPercent: progress,
-      });
-      onClose();
-    }
-  }
-
-  const isLocked   = submitState === "loading" || submitState === "success";
-  const isDisabled = !hours || Number(hours) <= 0 || !description.trim() || isDescriptionTooShort(description);
-
-  // ── Success overlay ──────────────────────────────────────────────────────────
-  if (submitState === "success") {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-        <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
-          {/* Thin green progress bar at top */}
-          <div className="h-1 w-full bg-green-500 rounded-t-2xl" />
-          <div className="flex flex-col items-center justify-center gap-4 px-8 py-12 text-center">
-            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100">
-              <CheckCircle2 className="w-9 h-9 text-green-600" />
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-base font-bold text-foreground">
-                Da gui phe duyet cho PM Alice Morgan
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {"Task se chuyen sang trang thai 'Cho duyet'"}
-              </p>
-            </div>
-            <p className="text-xs text-muted-foreground">Tu dong dong sau 2 giay...</p>
-            <button
-              onClick={onClose}
-              className="mt-1 px-6 py-2 rounded-lg text-sm font-semibold bg-card border border-border text-foreground hover:bg-secondary transition-colors"
-            >
-              Dong
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    onSave({
+      taskId: task.id,
+      taskTitle: task.title,
+      date,
+      loggedHours: Number(hours),
+      description: description.trim(),
+      progressPercent: progress,
+    });
+    onClose();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md">
-
-        {/* Thin loading bar at top */}
-        {submitState === "loading" && (
-          <div className="h-1 w-full rounded-t-2xl overflow-hidden bg-green-100">
-            <div className="h-1 bg-green-500 animate-[loading-bar_1.5s_ease-in-out_forwards]" style={{ width: "100%", animation: "progress 1.5s ease-in-out forwards" }} />
-          </div>
-        )}
-        {submitState !== "loading" && <div className="h-1 rounded-t-2xl" />}
-
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <div className={cn("p-1.5 rounded-md", isFinalLog ? "bg-green-100" : "bg-primary/10")}>
@@ -309,15 +235,7 @@ function LogWorkModal({
           )}
         </div>
 
-        {/* Error banner */}
-        {submitState === "error" && (
-          <div className="mx-5 mt-4 px-3 py-2.5 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-xs text-red-700 font-medium">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-            Khong the gui. Vui long thu lai.
-          </div>
-        )}
-
-        {isFinalLog && submitState !== "error" && (
+        {isFinalLog && (
           <div className="mx-5 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 font-medium">
             This will lock the task and send it for PM review. Please complete all fields.
           </div>
@@ -332,8 +250,7 @@ function LogWorkModal({
             <input
               type="date" value={date} max={TODAY}
               onChange={(e) => setDate(e.target.value)} required
-              disabled={isLocked}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -349,8 +266,7 @@ function LogWorkModal({
               type="number" min={0.5} max={24} step={0.5} value={hours}
               onChange={(e) => setHours(e.target.value === "" ? "" : Number(e.target.value))}
               placeholder="e.g. 4.5" required
-              disabled={isLocked}
-              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -373,9 +289,8 @@ function LogWorkModal({
                 ? "Describe what was achieved, test results, known issues, and sign-off notes..."
                 : "Describe the work completed, issues encountered, next steps..."}
               rows={4} required
-              disabled={isLocked}
               className={cn(
-                "w-full border rounded-lg px-3 py-2 text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed",
+                "w-full border rounded-lg px-3 py-2 text-sm bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring",
                 isDescriptionTooShort(description) ? "border-red-300 focus:ring-red-200" : "border-border focus:ring-ring"
               )}
             />
@@ -394,7 +309,7 @@ function LogWorkModal({
             </div>
             <input
               type="range" min={0} max={100} step={5} value={progress}
-              disabled={isFinalLog || isLocked}
+              disabled={isFinalLog}
               onChange={(e) => setProgress(Number(e.target.value))}
               className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: `linear-gradient(to right, var(--primary) ${progress}%, var(--secondary) ${progress}%)` }}
@@ -411,7 +326,7 @@ function LogWorkModal({
           <div className="flex items-center gap-2 pt-1">
             <button
               type="submit"
-              disabled={isDisabled || isLocked}
+              disabled={!hours || Number(hours) <= 0 || !description.trim() || isDescriptionTooShort(description)}
               title={
                 isDescriptionTooShort(description)
                   ? "Description must be at least 20 characters"
@@ -421,31 +336,15 @@ function LogWorkModal({
               }
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-colors",
-                isDisabled || isLocked
+                !hours || Number(hours) <= 0 || !description.trim() || isDescriptionTooShort(description)
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                   : isFinalLog
-                  ? submitState === "error"
-                    ? "bg-red-600 text-white hover:bg-red-700"
-                    : "bg-green-600 text-white hover:bg-green-700"
+                  ? "bg-green-600 text-white hover:bg-green-700"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
               )}
             >
-              {submitState === "loading" ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Dang gui...
-                </>
-              ) : submitState === "error" ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Thu lai
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  {isFinalLog ? t("submit") : t("save")}
-                </>
-              )}
+              <Check className="w-4 h-4" />
+              {isFinalLog ? t("submit") : t("save")}
             </button>
             {!isFinalLog && (
               <button
@@ -493,7 +392,7 @@ const RAG_DOT: Record<RAGStatus, string> = {
   red:   "bg-red-500",
 };
 
-// ─── Task Card ────────────────���───────────────────────────────────────────────
+// ─── Task Card ────────────────────────────────────────────────────────────────
 
 function MyTaskCard({
   task,
@@ -886,21 +785,11 @@ function SectionHeader({
 export function OperationalPortal({
   onLogWorkSubmit,
   onNotifyPM,
-  engineerName,
 }: {
   onLogWorkSubmit?: (taskId: string, entry: Omit<LogWorkEntry, "id">) => void;
   onNotifyPM?: (notification: Omit<EngNotification, "id" | "read">) => void;
-  /** If provided, filters tasks to only those assigned to this engineer name */
-  engineerName?: string;
 }) {
-  const [profile] = useState<EngineerProfile>(() => {
-    if (!engineerName || engineerName === ENGINEER_PROFILE.name) {
-      return { ...ENGINEER_PROFILE };
-    }
-    // For Priya Nair — adapt profile name/initials but keep same structure
-    const initials = engineerName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-    return { ...ENGINEER_PROFILE, name: engineerName, initials };
-  });
+  const [profile] = useState<EngineerProfile>({ ...ENGINEER_PROFILE });
 
   // All tasks from all projects this engineer is assigned to
   const [allTasks, setAllTasks] = useState<(TaskCard & { projectId: string; projectName: string })[]>(() => {
@@ -909,10 +798,7 @@ export function OperationalPortal({
       const td = TACTICAL_DATA[proj.projectId];
       if (td) {
         td.tasks
-          .filter((t) => {
-            if (engineerName) return t.assigneeName === engineerName;
-            return t.assigneeId === profile.memberId;
-          })
+          .filter((t) => t.assigneeId === profile.memberId)
           .forEach((t) => result.push({ ...t, projectId: proj.projectId, projectName: proj.projectName }));
       }
     });
@@ -1388,7 +1274,6 @@ export function OperationalPortal({
           actualHours={actualHours[selectedTask.id] ?? 0}
           onTimerStart={() => handleStart(selectedTask.id)}
           onTimerPause={() => handlePause(selectedTask.id)}
-          workLogs={logWorkHistory.filter((l) => l.taskId === selectedTask.id)}
         />
       )}
     </div>

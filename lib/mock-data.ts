@@ -16,13 +16,6 @@ export interface TeamMember {
   activeTasks: number;
 }
 
-export interface SubTask {
-  id: string;
-  title: string;
-  done: boolean;
-  assignee?: string;
-}
-
 export interface TaskCard {
   id: string;
   title: string;
@@ -32,9 +25,8 @@ export interface TaskCard {
   assigneeName: string;
   priority: "high" | "medium" | "low";
   dueDate: string;
-  plannedHours?: number;
-  description?: string;
-  subtasks?: SubTask[];
+  plannedHours?: number;  // mandatory for Engineer Start button; denominator for progress
+  description?: string;  // rich description set in Task Creation form
 }
 
 export interface TimesheetEntry {
@@ -727,20 +719,9 @@ export const TACTICAL_DATA: Record<string, TacticalProjectData> = {
       { id: "M-04", name: "Priya Nair",    initials: "PN", role: "Test Engineer",    department: "FPGA",     activeTasks: 2 },
     ],
     tasks: [
-  { id: "T-001", title: "Requirements capture",          phase: "Survey",  status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "medium", dueDate: "2025-02-28", plannedHours: 40  },
-  { id: "T-002", title: "Architecture design",           phase: "R&D",     status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-05-30", plannedHours: 120 },
-  {
-    id: "T-003", title: "FPGA synthesis timing closure", phase: "R&D", status: "In Progress",
-    assigneeId: "M-01", assigneeName: "James Hart", priority: "high", dueDate: "2025-12-01", plannedHours: 80,
-    description: "Close all timing violations in the NavComm FPGA synthesis. Target: 0 critical paths at -0.2ns slack.",
-    subtasks: [
-      { id: "ST-001", title: "Run initial timing analysis report", done: true, assignee: "James Hart" },
-      { id: "ST-002", title: "Resolve setup violations on CLK_SYS domain", done: true, assignee: "James Hart" },
-      { id: "ST-003", title: "Resolve hold violations on CLK_AUX domain", done: false, assignee: "James Hart" },
-      { id: "ST-004", title: "Re-run full timing closure with updated constraints", done: false, assignee: "James Hart" },
-      { id: "ST-005", title: "PM sign-off on timing closure report", done: false, assignee: "PM" },
-    ],
-  },
+      { id: "T-001", title: "Requirements capture",          phase: "Survey",  status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "medium", dueDate: "2025-02-28", plannedHours: 40  },
+      { id: "T-002", title: "Architecture design",           phase: "R&D",     status: "Done",        assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-05-30", plannedHours: 120 },
+      { id: "T-003", title: "FPGA synthesis timing closure", phase: "R&D",     status: "In Progress", assigneeId: "M-01", assigneeName: "James Hart",   priority: "high",   dueDate: "2025-12-01", plannedHours: 80  },
       { id: "T-004", title: "Signal integrity report",       phase: "R&D",     status: "Waiting for Review", assigneeId: "M-02", assigneeName: "Maria Russo",  priority: "medium", dueDate: "2025-11-15", plannedHours: 40  },
       { id: "T-005", title: "IP core integration",           phase: "R&D",     status: "In Progress", assigneeId: "M-03", assigneeName: "Kwame Asante", priority: "high",   dueDate: "2025-12-20", plannedHours: 60  },
       { id: "T-006", title: "Functional simulation",         phase: "Test",    status: "New",         assigneeId: "M-04", assigneeName: "Priya Nair",   priority: "medium", dueDate: "2026-02-01", plannedHours: 60  },
