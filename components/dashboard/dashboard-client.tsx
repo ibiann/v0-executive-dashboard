@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Sidebar, StrategicView } from "@/components/dashboard/sidebar";
 import { TopNav, ViewRole, BreadcrumbItem } from "@/components/dashboard/top-nav";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { PortfolioTable } from "@/components/dashboard/portfolio-table";
-import { ResourceHeatmap } from "@/components/dashboard/resource-heatmap";
-import { ProjectClosure } from "@/components/dashboard/project-closure";
+import { StrategicProjectList } from "@/components/dashboard/strategic-project-list";
+import { PortfolioPulse } from "@/components/dashboard/portfolio-pulse";
+import { MeetingSchedulerDrawer } from "@/components/dashboard/meeting-scheduler-drawer";
 import { ProjectInsightsDrawer } from "@/components/dashboard/project-insights-drawer";
 import { TacticalView } from "@/components/dashboard/tactical-view";
 import { OperationalPortal } from "@/components/dashboard/operational-portal";
-import { QualityHealthWidget } from "@/components/dashboard/quality-health-widget";
-import { RiskManagementWidget } from "@/components/dashboard/risk-management-widget";
-import { TeamVelocityWidget } from "@/components/dashboard/team-velocity-widget";
-import { CreateMeetingDialog } from "@/components/pm-workspace/create-meeting-dialog";
+
+// Lazy load heavy widgets
+const QualityHealthWidget = lazy(() => import("@/components/dashboard/quality-health-widget").then(m => ({ default: m.QualityHealthWidget })));
+const RiskManagementWidget = lazy(() => import("@/components/dashboard/risk-management-widget").then(m => ({ default: m.RiskManagementWidget })));
+const TeamVelocityWidget = lazy(() => import("@/components/dashboard/team-velocity-widget").then(m => ({ default: m.TeamVelocityWidget })));
+const ResourceHeatmap = lazy(() => import("@/components/dashboard/resource-heatmap").then(m => ({ default: m.ResourceHeatmap })));
+const ProjectClosure = lazy(() => import("@/components/dashboard/project-closure").then(m => ({ default: m.ProjectClosure })));
+
 import {
   PROJECTS,
   TACTICAL_DATA,
@@ -98,12 +102,8 @@ export function DashboardClient() {
 
   // ─── Lịch sắp tới (static mock — delivery via ERPNext) ───────────────────────
   const [showMeetingDialog, setShowMeetingDialog] = useState(false);
-  const upcomingMeetings = [
-    { id: "MTG-001", date: "25/03", startTime: "09:00", title: "Họp tiến độ Phase R&D",        projectName: "NavComm FPGA",   type: "Họp tiến độ",  attendees: 5, location: "Phòng A3"       },
-    { id: "MTG-002", date: "26/03", startTime: "14:00", title: "Đánh giá kỹ thuật Sigma",       projectName: "Sigma HW",       type: "Họp kỹ thuật", attendees: 3, location: "Online"         },
-    { id: "MTG-003", date: "28/03", startTime: "10:00", title: "Review Sprint 12",              projectName: "ProtoLink MW",   type: "Họp đánh giá", attendees: 4, location: "Phòng B1"       },
-    { id: "MTG-004", date: "01/04", startTime: "09:00", title: "Họp ban điều hành tháng 4",     projectName: "Toàn công ty",   type: "Họp tiến độ",  attendees: 6, location: "Phòng họp lớn"  },
-  ];
+  const [meetingProject, setMeetingProject] = useState<Project | null>(null);
+  const [filterRAG, setFilterRAG] = useState<"red" | "amber" | "green" | null>(null);
 
   // ─── Strategic-level mutations ───────────────────────────────────────────────
   function handleRagChange(projectId: string, newRag: RAGStatus) {
@@ -488,47 +488,28 @@ export function DashboardClient() {
               )}
             </section>
 
-            <PortfolioTable
-              projects={displayedProjects}
+            {/* Portfolio Pulse */}
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-xs font-semibold text-muted-foreground">Tình trạng:</span>
+              <PortfolioPulse
+                projects={activeProjects}
+                onFilterClick={(status) => setFilterRAG(filterRAG === status ? null : status)}
+              />
+            </div>
+
+            {/* Strategic Project List */}
+            <StrategicProjectList
+              projects={
+                filterRAG
+                  ? activeProjects.filter((p) => p.ragStatus === filterRAG)
+                  : activeProjects
+              }
               onProjectClick={(p) => setSelectedProject(p)}
-              onCreateProject={(data) => {
-                // Create new project and redirect to tactical view
-                const newProjectId = `PRJ-${String(projects.length + 1).padStart(3, "0")}`;
-                const newProject: Project = {
-                  id: newProjectId,
-                  name: data.name,
-                  pm: data.pm,
-                  category: data.category,
-                  ragStatus: "green",
-                  phases: [],
-                  overallProgress: 0,
-                  plannedProgress: 0,
-                  department: data.category === "Software" ? "Software" : data.category === "Hardware" ? "Hardware" : "FPGA",
-                  resourceEfficiency: 0,
-                  startDate: new Date().toISOString().split("T")[0],
-                  endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-                  closed: false,
-                  hoursData: [],
-                  overdueTasks: [],
-                };
-                
-                // Initialize tactical data with default phases based on category
-                const defaultPhases = DEFAULT_PHASE_WEIGHTS[data.category];
-                const newTacticalData: TacticalProjectData = {
-                  projectId: newProjectId,
-                  phases: defaultPhases,
-                  tasks: [],
-                  team: [],
-                  timesheets: [],
-                };
-                
-                // Add project and tactical data to state
-                setProjects((prev) => [...prev, newProject]);
-                setTacticalData((prev) => ({ ...prev, [newProjectId]: newTacticalData }));
-                
-                // Switch to tactical view for this project
-                setFocusedProjectId(newProjectId);
+              onScheduleMeeting={(p) => {
+                setMeetingProject(p);
+                setShowMeetingDialog(true);
               }}
+              selectedProjectId={selectedProject?.id}
             />
 
             {/* Milestones */}
@@ -710,6 +691,16 @@ export function DashboardClient() {
           onRagChange={handleRagChange}
         />
       )}
+
+      {/* Meeting Scheduler Drawer */}
+      <MeetingSchedulerDrawer
+        open={showMeetingDialog}
+        onOpenChange={setShowMeetingDialog}
+        project={meetingProject}
+        onSchedule={(data) => {
+          console.log("[v0] Meeting scheduled:", { project: meetingProject?.id, time: data.time, participants: data.participants });
+        }}
+      />
     </div>
   );
 }
