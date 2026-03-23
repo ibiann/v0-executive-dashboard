@@ -13,6 +13,7 @@ import { OperationalPortal } from "@/components/dashboard/operational-portal";
 import { QualityHealthWidget } from "@/components/dashboard/quality-health-widget";
 import { RiskManagementWidget } from "@/components/dashboard/risk-management-widget";
 import { TeamVelocityWidget } from "@/components/dashboard/team-velocity-widget";
+import { CreateMeetingDialog } from "@/components/pm-workspace/create-meeting-dialog";
 import {
   PROJECTS,
   TACTICAL_DATA,
@@ -26,6 +27,7 @@ import {
   getPortfolioHealth,
   getGlobalSPI,
   getResourceEfficiency,
+  Meeting,
 } from "@/lib/mock-data";
 import { Activity, Layers, Gauge, Users } from "lucide-react";
 
@@ -93,6 +95,15 @@ export function DashboardClient() {
   const greenCount = activeProjects.filter((p) => p.ragStatus === "green").length;
   const amberCount = activeProjects.filter((p) => p.ragStatus === "amber").length;
   const redCount   = activeProjects.filter((p) => p.ragStatus === "red").length;
+
+  // ─── Lịch sắp tới (static mock — delivery via ERPNext) ───────────────────────
+  const [showMeetingDialog, setShowMeetingDialog] = useState(false);
+  const upcomingMeetings = [
+    { id: "MTG-001", date: "25/03", startTime: "09:00", title: "Họp tiến độ Phase R&D",        projectName: "NavComm FPGA",   type: "Họp tiến độ",  attendees: 5, location: "Phòng A3"       },
+    { id: "MTG-002", date: "26/03", startTime: "14:00", title: "Đánh giá kỹ thuật Sigma",       projectName: "Sigma HW",       type: "Họp kỹ thuật", attendees: 3, location: "Online"         },
+    { id: "MTG-003", date: "28/03", startTime: "10:00", title: "Review Sprint 12",              projectName: "ProtoLink MW",   type: "Họp đánh giá", attendees: 4, location: "Phòng B1"       },
+    { id: "MTG-004", date: "01/04", startTime: "09:00", title: "Họp ban điều hành tháng 4",     projectName: "Toàn công ty",   type: "Họp tiến độ",  attendees: 6, location: "Phòng họp lớn"  },
+  ];
 
   // ─── Strategic-level mutations ───────────────────────────────────────────────
   function handleRagChange(projectId: string, newRag: RAGStatus) {
@@ -547,6 +558,41 @@ export function DashboardClient() {
               </div>
             </section>
 
+            {/* Lịch sắp tới */}
+            <section className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Lịch sắp tới</h3>
+                <button
+                  onClick={() => setShowMeetingDialog(true)}
+                  className="text-xs px-2.5 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  + Đặt lịch họp
+                </button>
+              </div>
+              <div className="space-y-0.5">
+                {upcomingMeetings.map((m) => (
+                  <div
+                    key={m.id}
+                    className="group flex items-center justify-between py-1.5 px-2 -mx-2 text-xs rounded hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="font-mono text-muted-foreground w-24 shrink-0">{m.date} {m.startTime}</span>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${m.type === "Họp khẩn cấp" ? "bg-danger" : "bg-primary"}`} />
+                      <span className="font-medium text-foreground truncate">{m.title}</span>
+                      <span className="text-muted-foreground hidden sm:inline truncate">· {m.projectName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 text-muted-foreground">
+                      <span>{m.attendees} người</span>
+                      {m.location && <span className="hidden md:inline">· {m.location}</span>}
+                    </div>
+                  </div>
+                ))}
+                {upcomingMeetings.length === 0 && (
+                  <p className="text-xs text-muted-foreground py-2">Không có cuộc họp sắp tới</p>
+                )}
+              </div>
+            </section>
+
             {/* Top Risks */}
             <section className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Rủi ro hàng đầu</h3>
@@ -582,6 +628,19 @@ export function DashboardClient() {
                 )}
               </div>
             </section>
+
+            {/* Create Meeting Dialog — opens from "+ Đặt lịch họp" */}
+            {showMeetingDialog && activeProjects[0] && (
+              <CreateMeetingDialog
+                open={showMeetingDialog}
+                onOpenChange={setShowMeetingDialog}
+                projectId={activeProjects[0].id}
+                projectName={activeProjects[0].name}
+                phases={activeProjects[0].phases.map((ph) => ph.phase)}
+                teamMembers={[]}
+                onCreateMeeting={() => setShowMeetingDialog(false)}
+              />
+            )}
           </>
         );
     }
