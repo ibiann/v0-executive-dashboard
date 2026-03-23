@@ -10,7 +10,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AuthRole = "CTO" | "PM" | "Engineer";
+export type AuthRole = "Chairman" | "CTO" | "PM" | "Engineer";
 
 export interface AuthUser {
   email: string;
@@ -27,6 +27,7 @@ export interface AuthUser {
 // ─── Demo accounts ────────────────────────────────────────────────────────────
 
 const DEMO_ACCOUNTS: (AuthUser & { password: string })[] = [
+  { email: "chairman@lancs.vn",  password: "123456", name: "Đỗ Mạnh Hùng",     role: "Chairman", initials: "DH", redirect: "/cto",        projectIds: []                                         },
   { email: "cto@lancs.vn",       password: "123456", name: "Nguyễn Văn Thành", role: "CTO",      initials: "NT", redirect: "/cto",         projectIds: []                                         },
   { email: "pm.alice@lancs.vn",  password: "123456", name: "Alice Morgan",     role: "PM",       initials: "AM", redirect: "/pm/PRJ-001",  projectIds: ["PRJ-001", "PRJ-003"]                     },
   { email: "pm.bob@lancs.vn",    password: "123456", name: "Bob Chen",         role: "PM",       initials: "BC", redirect: "/pm/PRJ-002",  projectIds: ["PRJ-002", "PRJ-004"]                     },
@@ -96,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // ─── Role → correct dashboard path ───────────────────────────────────────────
 
 export function dashboardForRole(role: AuthRole, user?: AuthUser | null): string {
-  if (role === "CTO") return "/cto";
+  if (role === "Chairman" || role === "CTO") return "/cto";
   if (role === "PM")  return user?.projectIds?.[0] ? `/pm/${user.projectIds[0]}/phases` : "/pm/PRJ-001/phases";
   return "/engineer";
 }

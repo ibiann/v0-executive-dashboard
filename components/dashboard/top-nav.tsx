@@ -14,15 +14,17 @@ import { useLang } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useAuth, type AuthRole } from "@/lib/auth";
 
-export type ViewRole = "CTO" | "PM" | "Engineer";
+export type ViewRole = "Chairman" | "CTO" | "PM" | "Engineer";
 
 const ROLE_BADGE: Record<ViewRole, { label: string; className: string }> = {
+  Chairman: { label: "TGĐ",   className: "bg-purple-600 text-white border border-purple-700"     },
   CTO:      { label: "CTO",   className: "bg-blue-100 text-blue-700 border border-blue-200"    },
   PM:       { label: "PM",    className: "bg-green-100 text-green-700 border border-green-200" },
   Engineer: { label: "Ky su", className: "bg-amber-100 text-amber-700 border border-amber-200" },
 };
 
 const DEMO_SWITCH: { role: AuthRole; href: string; label: string }[] = [
+  { role: "Chairman", href: "/cto",         label: "TGĐ — Đỗ Mạnh Hùng"      },
   { role: "CTO",      href: "/cto",         label: "CTO — Nguyễn Văn Thành" },
   { role: "PM",       href: "/pm/PRJ-001",  label: "PM — Alice Morgan"       },
   { role: "Engineer", href: "/engineer",    label: "KS — James Hart"         },
@@ -91,19 +93,13 @@ export function TopNav({
 
       {/* Right: Lang + Search + Bell + User */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* VI / EN toggle */}
+        {/* VI / EN toggle — hidden */}
+        {/* 
         <div className="flex items-center rounded-md border border-border overflow-hidden text-xs font-semibold">
-          <button
-            onClick={() => setLang("vi")}
-            className={`px-2.5 py-1.5 transition-colors ${lang === "vi" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
-            aria-label="Switch to Vietnamese"
-          >VI</button>
-          <button
-            onClick={() => setLang("en")}
-            className={`px-2.5 py-1.5 transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
-            aria-label="Switch to English"
-          >EN</button>
+          <button ...>VI</button>
+          <button ...>EN</button>
         </div>
+        */}
 
         <div className="relative hidden md:block">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />

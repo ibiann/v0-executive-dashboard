@@ -17,9 +17,9 @@ const RAG_BORDER: Record<RAGStatus, string> = {
 };
 
 const RAG_CONFIG: Record<RAGStatus, { color: string; label: string }> = {
-  green: { color: "bg-green-500",  label: "On Track" },
-  amber: { color: "bg-amber-400",  label: "At Risk"  },
-  red:   { color: "bg-red-500",    label: "Delayed"  },
+  green: { color: "bg-green-500",  label: "Đúng hạn" },
+  amber: { color: "bg-amber-400",  label: "Có rủi ro"  },
+  red:   { color: "bg-red-500",    label: "Trễ hạn"  },
 };
 
 const PHASE_COLORS: Record<string, string> = {

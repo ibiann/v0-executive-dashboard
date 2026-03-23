@@ -15,34 +15,49 @@ import {
   FileText,
   BookOpen,
   MapPin,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 
-export type StrategicView = "portfolio" | "quality" | "resource" | "risk" | "archive";
+export type StrategicView = "portfolio" | "quality" | "resource" | "risk" | "archive" | "budget" | "people";
 
-const STRATEGIC_NAV: { icon: typeof LayoutDashboard; label: string; view: StrategicView; href: string }[] = [
-  { icon: LayoutDashboard, label: "Portfolio",           view: "portfolio", href: "/cto"          },
-  { icon: ShieldCheck,     label: "Engineering Quality", view: "quality",   href: "/cto/quality"  },
-  { icon: Users,           label: "Resource Planning",   view: "resource",  href: "/cto/resource" },
-  { icon: AlertTriangle,   label: "Risk Management",     view: "risk",      href: "/cto/risk"     },
-  { icon: Archive,         label: "Project Archives",    view: "archive",   href: "/cto/archive"  },
-];
+function getStrategicNav(role: string) {
+  if (role === "Chairman") {
+    return [
+      { icon: LayoutDashboard, label: "Tổng quan",           view: "portfolio" as StrategicView, href: "/cto"          },
+      { icon: DollarSign,      label: "Ngân sách & Chi phí", view: "budget" as StrategicView,    href: "/cto/budget"   },
+      { icon: Users,           label: "Nhân sự tổng hợp",    view: "people" as StrategicView,    href: "/cto/people"   },
+      { icon: AlertTriangle,   label: "Quản lý rủi ro",      view: "risk" as StrategicView,      href: "/cto/risk"     },
+      { icon: Archive,         label: "Lưu trữ dự án",       view: "archive" as StrategicView,   href: "/cto/archive"  },
+    ];
+  }
+  return [
+    { icon: LayoutDashboard, label: "Danh mục dự án",       view: "portfolio" as StrategicView, href: "/cto"          },
+    { icon: ShieldCheck,     label: "Chất lượng kỹ thuật",  view: "quality" as StrategicView,   href: "/cto/quality"  },
+    { icon: Users,           label: "Kế hoạch nguồn lực",   view: "resource" as StrategicView,  href: "/cto/resource" },
+    { icon: AlertTriangle,   label: "Quản lý rủi ro",       view: "risk" as StrategicView,      href: "/cto/risk"     },
+    { icon: Archive,         label: "Lưu trữ dự án",        view: "archive" as StrategicView,   href: "/cto/archive"  },
+  ];
+}
+
+const STRATEGIC_NAV = getStrategicNav("CTO"); // Default, will be overridden in component
 
 const PM_NAV: { icon: typeof LayoutDashboard; label: string; segment: string }[] = [
-  { icon: CalendarRange, label: "Phase Planning",      segment: "phases"    },
-  { icon: KanbanSquare,  label: "Task Kanban",         segment: "kanban"    },
-  { icon: Users,         label: "Resource Allocation", segment: "resources" },
-  { icon: Clock,         label: "Timesheet Approval",  segment: "approval"  },
+  { icon: CalendarRange, label: "Kế hoạch Phase",      segment: "phases"    },
+  { icon: KanbanSquare,  label: "Bảng công việc",      segment: "kanban"    },
+  { icon: Users,         label: "Phân bổ nguồn lực",   segment: "resources" },
+  { icon: Clock,         label: "Duyệt chấm công",     segment: "approval"  },
 ];
 
 const ENGINEER_NAV: { icon: typeof LayoutDashboard; label: string; href: string }[] = [
-  { icon: LayoutDashboard, label: "My Dashboard",       href: "/engineer"           },
-  { icon: ClipboardList,   label: "Cong viec cua toi",  href: "/engineer/tasks"     },
-  { icon: Clock,           label: "Bang cham cong",     href: "/engineer/timesheet" },
-  { icon: FileText,        label: "Tai lieu",            href: "/engineer/documents" },
-  { icon: BookOpen,        label: "Kien thuc",           href: "/engineer/knowledge" },
-  { icon: MapPin,          label: "Dia chi",             href: "/engineer/locations" },
+  { icon: LayoutDashboard, label: "Bảng điều khiển",   href: "/engineer"           },
+  { icon: ClipboardList,   label: "Công việc của tôi",  href: "/engineer/tasks"     },
+  { icon: Clock,           label: "Bảng chấm công",    href: "/engineer/timesheet" },
+  { icon: FileText,        label: "Tài liệu",          href: "/engineer/documents" },
+  { icon: BookOpen,        label: "Kiến thức",         href: "/engineer/knowledge" },
+  { icon: MapPin,          label: "Địa chỉ",           href: "/engineer/locations" },
 ];
 
 export function Sidebar({
@@ -63,11 +78,15 @@ export function Sidebar({
 }) {
   const router  = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const label =
     mode === "pm" ? "PM Workspace" : mode === "engineer" ? "My Portal" : "Lancsnetworks";
   const levelLabel =
     mode === "pm" ? "Level 2 — PM" : mode === "engineer" ? "Level 3 — Engineer" : "Level 1 — Strategic";
+
+  // Get role-aware strategic nav
+  const strategicNav = getStrategicNav(user?.role || "CTO");
 
   return (
     <aside
@@ -92,7 +111,7 @@ export function Sidebar({
       {!collapsed && (
         <div className="px-4 pt-3 pb-1">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            {levelLabel}
+            {levelLabel === "LEVEL 1 — STRATEGIC" ? "CẤP 1 — CHIẾN LƯỢC" : levelLabel}
           </span>
         </div>
       )}
@@ -100,7 +119,7 @@ export function Sidebar({
       {/* Nav */}
       <nav className="flex-1 py-1 space-y-0.5 px-2">
         {mode === "strategic" ? (
-          STRATEGIC_NAV.map(({ icon: Icon, label: navLabel, view, href }) => {
+          strategicNav.map(({ icon: Icon, label: navLabel, view, href }) => {
             const isActive = onNavigate
               ? activeStrategicView === view
               : pathname === href || (href !== "/cto" && pathname.startsWith(href));
