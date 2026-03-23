@@ -91,19 +91,13 @@ export function TopNav({
 
       {/* Right: Lang + Search + Bell + User */}
       <div className="flex items-center gap-3 shrink-0">
-        {/* VI / EN toggle */}
+        {/* VI / EN toggle — hidden */}
+        {/* 
         <div className="flex items-center rounded-md border border-border overflow-hidden text-xs font-semibold">
-          <button
-            onClick={() => setLang("vi")}
-            className={`px-2.5 py-1.5 transition-colors ${lang === "vi" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
-            aria-label="Switch to Vietnamese"
-          >VI</button>
-          <button
-            onClick={() => setLang("en")}
-            className={`px-2.5 py-1.5 transition-colors ${lang === "en" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-muted"}`}
-            aria-label="Switch to English"
-          >EN</button>
+          <button ...>VI</button>
+          <button ...>EN</button>
         </div>
+        */}
 
         <div className="relative hidden md:block">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />

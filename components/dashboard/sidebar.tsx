@@ -22,27 +22,27 @@ import { useRouter, usePathname } from "next/navigation";
 export type StrategicView = "portfolio" | "quality" | "resource" | "risk" | "archive";
 
 const STRATEGIC_NAV: { icon: typeof LayoutDashboard; label: string; view: StrategicView; href: string }[] = [
-  { icon: LayoutDashboard, label: "Portfolio",           view: "portfolio", href: "/cto"          },
-  { icon: ShieldCheck,     label: "Engineering Quality", view: "quality",   href: "/cto/quality"  },
-  { icon: Users,           label: "Resource Planning",   view: "resource",  href: "/cto/resource" },
-  { icon: AlertTriangle,   label: "Risk Management",     view: "risk",      href: "/cto/risk"     },
-  { icon: Archive,         label: "Project Archives",    view: "archive",   href: "/cto/archive"  },
+  { icon: LayoutDashboard, label: "Danh mục dự án",       view: "portfolio", href: "/cto"          },
+  { icon: ShieldCheck,     label: "Chất lượng kỹ thuật",  view: "quality",   href: "/cto/quality"  },
+  { icon: Users,           label: "Kế hoạch nguồn lực",   view: "resource",  href: "/cto/resource" },
+  { icon: AlertTriangle,   label: "Quản lý rủi ro",       view: "risk",      href: "/cto/risk"     },
+  { icon: Archive,         label: "Lưu trữ dự án",        view: "archive",   href: "/cto/archive"  },
 ];
 
 const PM_NAV: { icon: typeof LayoutDashboard; label: string; segment: string }[] = [
-  { icon: CalendarRange, label: "Phase Planning",      segment: "phases"    },
-  { icon: KanbanSquare,  label: "Task Kanban",         segment: "kanban"    },
-  { icon: Users,         label: "Resource Allocation", segment: "resources" },
-  { icon: Clock,         label: "Timesheet Approval",  segment: "approval"  },
+  { icon: CalendarRange, label: "Kế hoạch Phase",      segment: "phases"    },
+  { icon: KanbanSquare,  label: "Bảng công việc",      segment: "kanban"    },
+  { icon: Users,         label: "Phân bổ nguồn lực",   segment: "resources" },
+  { icon: Clock,         label: "Duyệt chấm công",     segment: "approval"  },
 ];
 
 const ENGINEER_NAV: { icon: typeof LayoutDashboard; label: string; href: string }[] = [
-  { icon: LayoutDashboard, label: "My Dashboard",       href: "/engineer"           },
-  { icon: ClipboardList,   label: "Cong viec cua toi",  href: "/engineer/tasks"     },
-  { icon: Clock,           label: "Bang cham cong",     href: "/engineer/timesheet" },
-  { icon: FileText,        label: "Tai lieu",            href: "/engineer/documents" },
-  { icon: BookOpen,        label: "Kien thuc",           href: "/engineer/knowledge" },
-  { icon: MapPin,          label: "Dia chi",             href: "/engineer/locations" },
+  { icon: LayoutDashboard, label: "Bảng điều khiển",   href: "/engineer"           },
+  { icon: ClipboardList,   label: "Công việc của tôi",  href: "/engineer/tasks"     },
+  { icon: Clock,           label: "Bảng chấm công",    href: "/engineer/timesheet" },
+  { icon: FileText,        label: "Tài liệu",          href: "/engineer/documents" },
+  { icon: BookOpen,        label: "Kiến thức",         href: "/engineer/knowledge" },
+  { icon: MapPin,          label: "Địa chỉ",           href: "/engineer/locations" },
 ];
 
 export function Sidebar({
@@ -92,7 +92,7 @@ export function Sidebar({
       {!collapsed && (
         <div className="px-4 pt-3 pb-1">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            {levelLabel}
+            {levelLabel === "LEVEL 1 — STRATEGIC" ? "CẤP 1 — CHIẾN LƯỢC" : levelLabel}
           </span>
         </div>
       )}

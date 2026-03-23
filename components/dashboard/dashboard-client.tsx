@@ -32,24 +32,24 @@ import { Activity, Layers, Gauge, Users } from "lucide-react";
 // ─── Strategic page headings ──────────────────────────────────────────────────
 const STRATEGIC_META: Record<StrategicView, { title: string; subtitle: string }> = {
   portfolio: {
-    title: "Portfolio Insights",
-    subtitle: "Read-only view derived from approved timesheets · CTO perspective",
+    title: "Tổng quan danh mục",
+    subtitle: "Dữ liệu tổng hợp từ chấm công đã duyệt · Góc nhìn CTO",
   },
   quality: {
-    title: "Engineering Quality & Technical Health",
-    subtitle: "Bug density, test coverage, technical debt across all active projects",
+    title: "Chất lượng kỹ thuật & Sức khỏe kỹ thuật",
+    subtitle: "Mật độ lỗi, độ bao phủ kiểm thử, nợ kỹ thuật trên tất cả dự án hoạt động",
   },
   resource: {
-    title: "Resource Planning & Team Velocity",
-    subtitle: "Utilisation heatmap and sprint velocity per engineering department",
+    title: "Kế hoạch nguồn lực & Tốc độ nhóm",
+    subtitle: "Bản đồ tận dụng và tốc độ sprint trên mỗi bộ phận kỹ thuật",
   },
   risk: {
-    title: "Risk Management",
-    subtitle: "Real-time bottleneck alerts — security, hardware shortages, critical path delays",
+    title: "Quản lý rủi ro",
+    subtitle: "Cảnh báo nút thắt thời gian thực — bảo mật, thiếu hàng khó, chậm đường tới hạn",
   },
   archive: {
-    title: "Project Archive",
-    subtitle: "Completed projects ready for final review and export",
+    title: "Lưu trữ dự án",
+    subtitle: "Dự án hoàn thành sẵn sàng để xem xét cuối cùng và xuất",
   },
 };
 
@@ -218,42 +218,42 @@ export function DashboardClient() {
               aria-label="Key Performance Indicators"
             >
               <KpiCard
-                title="Portfolio Health"
+                title="Sức khỏe danh mục"
                 value={`${portfolioHealth}%`}
-                subtitle="Progress vs. Time Spent"
+                subtitle="Tiến độ so với thời gian"
                 trend={portfolioHealth >= 90 ? "up" : portfolioHealth >= 75 ? "neutral" : "down"}
-                trendLabel={portfolioHealth >= 90 ? "Healthy" : portfolioHealth >= 75 ? "Moderate" : "Needs attention"}
+                trendLabel={portfolioHealth >= 90 ? "Tốt" : portfolioHealth >= 75 ? "Trung bình" : "Cần chú ý"}
                 icon={<Activity className="w-4 h-4" />}
                 highlight
               />
               <KpiCard
-                title="Total Active Projects"
+                title="Tổng dự án hoạt động"
                 value={activeProjects.length}
-                subtitle={`${greenCount} on track · ${amberCount} at risk · ${redCount} delayed`}
+                subtitle={`${greenCount} đúng hạn · ${amberCount} có rủi ro · ${redCount} trễ hạn`}
                 trend="neutral"
-                trendLabel={`${closedProjects.length} closed`}
+                trendLabel={`${closedProjects.length} đã đóng`}
                 icon={<Layers className="w-4 h-4" />}
               />
               <KpiCard
-                title="Schedule Health"
+                title="Sức khỏe tiến độ"
                 value={`${Math.round(activeSPI * 100)}%`}
                 subtitle={`${activeProjects.filter((p) => p.ragStatus !== "red").length}/${activeProjects.length} dự án đúng hạn`}
                 trend={activeSPI >= 0.8 ? "up" : activeSPI >= 0.6 ? "neutral" : "down"}
                 trendLabel={
                   activeSPI >= 0.8
-                    ? "— Good"
+                    ? "— Tốt"
                     : activeSPI >= 0.6
-                    ? "— Moderate"
-                    : "— Critical"
+                    ? "— Trung bình"
+                    : "— Nghiêm trọng"
                 }
                 icon={<Gauge className="w-4 h-4" />}
               />
               <KpiCard
-                title="Resource Efficiency"
+                title="Hiệu suất nguồn lực"
                 value={`${resourceEff}%`}
-                subtitle="Aggregated from engineer log works"
+                subtitle="Tổng hợp từ chấm công kỹ sư"
                 trend={resourceEff >= 85 ? "up" : resourceEff >= 70 ? "neutral" : "down"}
-                trendLabel={resourceEff >= 85 ? "Efficient" : "Review needed"}
+                trendLabel={resourceEff >= 85 ? "Hiệu quả" : "Cần xem xét"}
                 icon={<Users className="w-4 h-4" />}
               />
             </section>
@@ -301,12 +301,68 @@ export function DashboardClient() {
               }}
             />
 
-            <ResourceHeatmap />
+            {/* Milestones */}
+            <section className="bg-card border border-border rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Milestone sắp tới</h3>
+              <div className="space-y-2">
+                {activeProjects.slice(0, 5).map((p) => {
+                  const currentPhase = p.phases.find((ph) => ph.progress < 100 && ph.progress > 0);
+                  const variance = p.overallProgress - p.plannedProgress;
+                  const phaseDisplay = currentPhase?.phase === "Survey" ? "Khảo sát" : currentPhase?.phase === "Test" ? "Kiểm thử" : currentPhase?.phase === "Release" ? "Phát hành" : currentPhase?.phase ?? "—";
+                  return (
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-border last:border-0 cursor-pointer hover:bg-muted/50 rounded px-2 -mx-2" onClick={() => setSelectedProject(p)}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${p.ragStatus === "green" ? "bg-success" : p.ragStatus === "amber" ? "bg-warning" : "bg-danger"}`} />
+                        <span className="text-xs font-medium text-foreground truncate">{p.name}</span>
+                        <span className="text-xs text-muted-foreground">Hoàn thành {phaseDisplay}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-mono text-muted-foreground">{p.endDate}</span>
+                        <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${variance >= 0 ? "bg-success/10 text-success" : "bg-danger/10 text-danger"}`}>
+                          {variance >= 0 ? "+" : ""}{variance}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
 
-            <ProjectClosure
-              projects={closedProjects}
-              onProjectClick={(p) => setSelectedProject(p)}
-            />
+            {/* Top Risks */}
+            <section className="bg-card border border-border rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Rủi ro hàng đầu</h3>
+              <div className="space-y-2">
+                {activeProjects
+                  .filter((p) => p.ragStatus !== "green")
+                  .sort((a, b) => (a.overallProgress - a.plannedProgress) - (b.overallProgress - b.plannedProgress))
+                  .slice(0, 3)
+                  .map((p) => {
+                    const gap = p.plannedProgress - p.overallProgress;
+                    return (
+                      <div key={p.id} className="flex items-start gap-3 py-2 border-b border-border last:border-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${p.ragStatus === "red" ? "bg-danger" : "bg-warning"}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-foreground">
+                            {p.name} — chênh lệch {gap}% so với kế hoạch
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Đề xuất: {p.ragStatus === "red"
+                              ? `Họp khẩn với ${p.pm}, xem xét điều chỉnh scope hoặc bổ sung nguồn lực`
+                              : `Theo dõi sát ${p.pm}, cập nhật tiến độ hàng ngày`
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                {activeProjects.filter((p) => p.ragStatus === "green").length === activeProjects.length && (
+                  <p className="text-xs text-success flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    Tất cả dự án đang đúng hạn — không có rủi ro đáng kể
+                  </p>
+                )}
+              </div>
+            </section>
           </>
         );
     }
