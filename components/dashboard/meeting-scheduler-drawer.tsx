@@ -21,7 +21,13 @@ export function MeetingSchedulerDrawer({
   const [selectedTime, setSelectedTime] = useState("09:00");
   const [participants, setParticipants] = useState<string[]>([project?.pm || ""]);
 
-  if (!open || !project) return null;
+  if (!open || !project) {
+    if (!open) console.log("[v0] Drawer closed, open=", open);
+    if (!project) console.log("[v0] Drawer hidden, no project");
+    return null;
+  }
+
+  console.log("[v0] Drawer rendering for project:", project.name);
 
   const handleSchedule = () => {
     onSchedule?.({ time: selectedTime, participants });
@@ -30,15 +36,15 @@ export function MeetingSchedulerDrawer({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end"
+      className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center"
       onClick={() => onOpenChange(false)}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute inset-0 bg-black/30" />
 
       {/* Drawer */}
       <div
-        className="relative w-full sm:w-96 bg-card border-t border-border rounded-t-lg shadow-lg"
+        className="relative w-full sm:w-96 bg-card border border-border rounded-b-lg sm:rounded-lg shadow-2xl sm:max-h-[80vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

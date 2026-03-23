@@ -506,6 +506,7 @@ export function DashboardClient() {
               }
               onProjectClick={(p) => setSelectedProject(p)}
               onScheduleMeeting={(p) => {
+                console.log("[v0] Schedule meeting clicked:", p.id, p.name);
                 setMeetingProject(p);
                 setShowMeetingDialog(true);
               }}

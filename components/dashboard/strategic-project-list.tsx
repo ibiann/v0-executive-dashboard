@@ -18,6 +18,8 @@ export function StrategicProjectList({
   onScheduleMeeting,
   selectedProjectId,
 }: StrategicProjectListProps) {
+  console.log("[v0] StrategicProjectList rendering with", projects.length, "projects");
+  
   const [expandedRAG, setExpandedRAG] = useState<Set<RAGStatus>>(
     new Set(["red", "amber"])
   );
