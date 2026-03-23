@@ -51,6 +51,14 @@ const STRATEGIC_META: Record<StrategicView, { title: string; subtitle: string }>
     title: "Lưu trữ dự án",
     subtitle: "Dự án hoàn thành sẵn sàng để xem xét cuối cùng và xuất",
   },
+  budget: {
+    title: "Ngân sách & Chi phí",
+    subtitle: "Tổng hợp chi tiêu theo dự án — chỉ dành cho Chủ tịch",
+  },
+  people: {
+    title: "Nhân sự tổng hợp",
+    subtitle: "Tổng hợp công suất và hiệu suất theo phòng ban",
+  },
 };
 
 export function DashboardClient() {
@@ -207,6 +215,161 @@ export function DashboardClient() {
             onProjectClick={(p) => setSelectedProject(p)}
           />
         );
+
+      case "people":
+        return (
+          <div className="flex items-center justify-center h-48 text-muted-foreground text-sm border border-dashed border-border rounded-lg">
+            Nhân sự tổng hợp — sẽ được cập nhật
+          </div>
+        );
+
+      case "budget": {
+        // Deterministic per-project budget data derived from project list
+        const budgetRows = [...activeProjects, ...closedProjects].map((p) => {
+          // Seed from project id char codes for deterministic values
+          const seed = p.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+          const budgetB = 1.5 + ((seed * 17) % 150) / 100; // 1.5–3.0 tỷ
+          const variance = 1 + (((seed * 31) % 30) - 15) / 100; // ±15%
+          const spentB = budgetB * (p.overallProgress / 100) * variance;
+          const ratio = spentB / budgetB;
+          const status: "green" | "amber" | "red" =
+            ratio > 1 ? "red" : ratio >= 0.9 ? "amber" : "green";
+          return { project: p, budgetB, spentB, ratio, status };
+        });
+        budgetRows.sort((a, b) => {
+          const order = { red: 0, amber: 1, green: 2 };
+          return order[a.status] - order[b.status];
+        });
+
+        const totalBudget = budgetRows.reduce((s, r) => s + r.budgetB, 0);
+        const totalSpent  = budgetRows.reduce((s, r) => s + r.spentB, 0);
+        const totalLeft   = totalBudget - totalSpent;
+
+        const alerts = budgetRows
+          .filter((r) => r.status !== "green")
+          .slice(0, 5)
+          .map((r) => {
+            if (r.ratio > 1)
+              return `${r.project.name} — chi tiêu vượt ${Math.round((r.ratio - 1) * 100)}% so với kế hoạch`;
+            return `${r.project.name} — đã dùng ${Math.round(r.ratio * 100)}% ngân sách nhưng mới hoàn thành ${r.project.overallProgress}%`;
+          });
+
+        return (
+          <div className="space-y-6">
+            {/* Row 1: 3 metric cards */}
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <KpiCard
+                title="Tổng ngân sách"
+                value={`${totalBudget.toFixed(2)} tỷ`}
+                subtitle="Toàn bộ danh mục"
+                trend="neutral"
+                trendLabel={`${budgetRows.length} dự án`}
+                icon={<Layers className="w-4 h-4" />}
+                highlight
+              />
+              <KpiCard
+                title="Đã sử dụng"
+                value={`${totalSpent.toFixed(2)} tỷ`}
+                subtitle={`${Math.round((totalSpent / totalBudget) * 100)}% ngân sách`}
+                trend={totalSpent / totalBudget <= 0.9 ? "up" : "down"}
+                trendLabel={totalSpent / totalBudget <= 0.9 ? "Trong kế hoạch" : "Cận giới hạn"}
+                icon={<Activity className="w-4 h-4" />}
+              />
+              <KpiCard
+                title="Còn lại"
+                value={`${totalLeft.toFixed(2)} tỷ`}
+                subtitle={`${Math.round((totalLeft / totalBudget) * 100)}% còn lại`}
+                trend={totalLeft / totalBudget >= 0.15 ? "up" : "down"}
+                trendLabel={totalLeft / totalBudget >= 0.15 ? "Đủ dự phòng" : "Cần theo dõi"}
+                icon={<Gauge className="w-4 h-4" />}
+              />
+            </section>
+
+            {/* Row 2: Budget table */}
+            <section className="bg-card border border-border rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40 text-left text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium">Dự án</th>
+                    <th className="px-4 py-2.5 font-medium">PM</th>
+                    <th className="px-4 py-2.5 font-medium text-right">Ngân sách KH</th>
+                    <th className="px-4 py-2.5 font-medium text-right">Chi tiêu TT</th>
+                    <th className="px-4 py-2.5 font-medium text-right">Còn lại</th>
+                    <th className="px-4 py-2.5 font-medium w-32">% Sử dụng</th>
+                    <th className="px-4 py-2.5 font-medium">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {budgetRows.map(({ project: p, budgetB, spentB, ratio, status }) => {
+                    const leftB = budgetB - spentB;
+                    const pct   = Math.min(Math.round(ratio * 100), 120);
+                    const barColor =
+                      status === "red" ? "bg-danger" : status === "amber" ? "bg-warning" : "bg-success";
+                    const badgeStyle =
+                      status === "red"
+                        ? "bg-danger/10 text-danger"
+                        : status === "amber"
+                        ? "bg-warning/10 text-warning"
+                        : "bg-success/10 text-success";
+                    const badgeLabel =
+                      status === "red" ? "Vượt KH" : status === "amber" ? "Cận KH" : "Trong KH";
+                    return (
+                      <tr
+                        key={p.id}
+                        className="border-b border-border last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => setSelectedProject(p)}
+                      >
+                        <td className="px-4 py-2.5 font-medium text-foreground truncate max-w-[160px]">
+                          {p.name}
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{p.pm}</td>
+                        <td className="px-4 py-2.5 text-right font-mono">{budgetB.toFixed(2)} tỷ</td>
+                        <td className="px-4 py-2.5 text-right font-mono">{spentB.toFixed(2)} tỷ</td>
+                        <td className="px-4 py-2.5 text-right font-mono">
+                          <span className={leftB < 0 ? "text-danger" : "text-foreground"}>
+                            {leftB.toFixed(2)} tỷ
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${barColor}`}
+                                style={{ width: `${Math.min(pct, 100)}%` }}
+                              />
+                            </div>
+                            <span className="font-mono text-muted-foreground w-8 text-right">{pct}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${badgeStyle}`}>
+                            {badgeLabel}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </section>
+
+            {/* Row 3: Alerts */}
+            {alerts.length > 0 && (
+              <section className="bg-card border border-border rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Cảnh báo ngân sách</h3>
+                <ul className="space-y-2">
+                  {alerts.map((msg, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <span className="mt-0.5 w-1.5 h-1.5 rounded-full bg-danger shrink-0" />
+                      {msg}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        );
+      }
 
       case "portfolio":
       default:
