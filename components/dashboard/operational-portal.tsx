@@ -17,11 +17,14 @@ import {
   LogWorkEntry,
   TaskCard,
   RAGStatus,
+  Meeting,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import { TaskDetailPanel } from "./task-detail-panel";
 import { JustificationModal, JustificationData } from "./justification-modal";
+import { UpcomingMeetingBanner } from "@/components/pm-workspace/upcoming-meeting-banner";
+import { useAppState } from "@/lib/app-state";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -893,6 +896,9 @@ export function OperationalPortal({
   /** If provided, filters tasks to only those assigned to this engineer name */
   engineerName?: string;
 }) {
+  const { tacticalData } = useAppState();
+  const [dismissedMeetingBanner, setDismissedMeetingBanner] = useState(false);
+  
   const [profile] = useState<EngineerProfile>(() => {
     if (!engineerName || engineerName === ENGINEER_PROFILE.name) {
       return { ...ENGINEER_PROFILE };
@@ -925,6 +931,23 @@ export function OperationalPortal({
   const tasks = activeProjectId
     ? allTasks.filter((t) => t.projectId === activeProjectId)
     : allTasks;
+
+  // Get upcoming meetings from all projects
+  const upcomingMeetings: (Meeting & { projectId: string; projectName: string })[] = [];
+  profile.projects.forEach((proj) => {
+    const td = tacticalData[proj.projectId];
+    if (td && td.meetings) {
+      td.meetings
+        .filter((m) => m.status !== "Đã hủy" && m.status !== "Đã kết thúc")
+        .forEach((m) => {
+          upcomingMeetings.push({ ...m, projectId: proj.projectId, projectName: proj.projectName });
+        });
+    }
+  });
+  upcomingMeetings.sort(
+    (a, b) => new Date(`${a.startDate}T${a.startTime}:00`).getTime() - new Date(`${b.startDate}T${b.startTime}:00`).getTime()
+  );
+  const nextMeeting = upcomingMeetings[0];
 
   // Progress per task
   const [taskProgress, setTaskProgress] = useState<TaskProgress>(() => {
@@ -1075,6 +1098,15 @@ export function OperationalPortal({
   function renderHome() {
     return (
       <>
+        {/* Upcoming Meeting Banner */}
+        {nextMeeting && !dismissedMeetingBanner && (
+          <UpcomingMeetingBanner
+            meeting={nextMeeting}
+            projectName={nextMeeting.projectName}
+            onDismiss={() => setDismissedMeetingBanner(true)}
+          />
+        )}
+
         {/* Workspace tiles */}
         <section>
           <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">

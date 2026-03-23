@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopNav } from "@/components/dashboard/top-nav";
 import { useAppState } from "@/lib/app-state";
 import { useAuth, dashboardForRole } from "@/lib/auth";
-import { CalendarRange, KanbanSquare, Users, Clock, ArrowLeft } from "lucide-react";
+import { CalendarRange, KanbanSquare, Users, Clock, Calendar, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ const TABS = [
   { label: "Task Kanban",         segment: "kanban",    icon: KanbanSquare  },
   { label: "Resource Allocation", segment: "resources", icon: Users         },
   { label: "Timesheet Approval",  segment: "approval",  icon: Clock         },
+  { label: "Lịch họp",            segment: "calendar",  icon: Calendar      },
 ];
 
 export function PmShell({ children }: { children: React.ReactNode }) {
